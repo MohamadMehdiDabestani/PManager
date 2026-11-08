@@ -1,5 +1,5 @@
 import { auditLogs } from '@cmms/db';
-import type { ServiceContext } from '../context.js';
+import type { ServiceContext } from '../context';
 
 export interface WriteAuditInput {
   plantId?: string | null;

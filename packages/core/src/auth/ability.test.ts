@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { subject } from '@casl/ability';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { workOrders } from '@cmms/db';
-import { defineAbilityFor, defineSystemAbility } from './ability.js';
-import { accessibleWhere, assertCan, AppForbidden } from './guard.js';
+import { defineAbilityFor, defineSystemAbility } from './ability';
+import { accessibleWhere, assertCan, AppForbidden } from './guard';
 
 const tech = { id: 't1', role: 'TECHNICIAN' as const, plantIds: ['p1'], rulesVersion: 1 };
 

@@ -1,2 +1,3 @@
-export * from './ability.js';
-export * from './guard.js';
+export * from './ability';
+export * from './guard';
+export * from './password';

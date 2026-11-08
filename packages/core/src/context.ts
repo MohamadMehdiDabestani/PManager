@@ -1,5 +1,5 @@
 import type { DbClient } from '@cmms/db';
-import type { AppAbility, AuthUser } from './auth/ability.js';
+import type { AppAbility, AuthUser } from './auth/ability';
 
 export interface LoggerLike {
   info(obj: Record<string, unknown> | string, msg?: string): void;

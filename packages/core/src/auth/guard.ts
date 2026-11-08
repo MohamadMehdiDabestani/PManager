@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from '@casl/ability';
 import { and, eq, inArray, not, or, sql, type SQL, type AnyColumn } from 'drizzle-orm';
-import type { AppAbility, Action, SubjectName } from './ability.js';
+import type { AppAbility, Action, SubjectName } from './ability';
 
 export class AppForbidden extends Error {
   readonly httpStatus = 403;

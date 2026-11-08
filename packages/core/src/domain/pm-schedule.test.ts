@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeNextDue } from './pm-schedule.js';
+import { computeNextDue } from './pm-schedule';
 
 describe('PM Schedule Engine - computeNextDue', () => {
   it('calculates floating calendar due date and shifts Friday (day 5) to Saturday (day 6)', () => {

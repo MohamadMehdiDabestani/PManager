@@ -1,4 +1,27 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { z } from 'zod';
+
+function ensureEnvLoaded(): void {
+  if (process.env['DATABASE_URL'] && process.env['REDIS_URL']) return;
+  let dir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const envPath = resolve(dir, '.env');
+    if (existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      try {
+        process.loadEnvFile(envPath);
+        break;
+      } catch {
+        // ignore
+      }
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+}
+
+ensureEnvLoaded();
 
 const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

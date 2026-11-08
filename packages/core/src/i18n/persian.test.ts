@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeDigits, normalizePersianText, toPersianDigits } from './persian.js';
+import { normalizeDigits, normalizePersianText, toPersianDigits } from './persian';
 
 describe('Persian & Arabic text/digit normalization', () => {
   it('converts Persian and Arabic digits to ASCII', () => {
