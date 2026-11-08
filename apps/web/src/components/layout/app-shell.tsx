@@ -2,6 +2,9 @@ import Link from 'next/link';
 import {
   Activity,
   Building2,
+  CalendarClock,
+  ClipboardCheck,
+  ClipboardList,
   Cpu,
   KeyRound,
   LogOut,
@@ -18,7 +21,14 @@ import type { Role } from '@cmms/db';
 
 interface AppShellProps {
   children: React.ReactNode;
-  activeNav?: 'dashboard' | 'assets' | 'organization' | 'scan';
+  activeNav?:
+    | 'dashboard'
+    | 'assets'
+    | 'pm-templates'
+    | 'pm-schedules'
+    | 'work-orders'
+    | 'organization'
+    | 'scan';
   user?: {
     fullName: string;
     username: string;
@@ -29,6 +39,9 @@ interface AppShellProps {
 export function AppShell({ children, activeNav = 'dashboard', user }: AppShellProps) {
   const navItems = [
     { key: 'dashboard', href: '/', label: fa.nav.dashboard, icon: Activity },
+    { key: 'work-orders', href: '/work-orders', label: fa.nav.workOrders, icon: ClipboardList },
+    { key: 'pm-schedules', href: '/pm-schedules', label: fa.nav.pmSchedules, icon: CalendarClock },
+    { key: 'pm-templates', href: '/pm-templates', label: fa.nav.pmTemplates, icon: ClipboardCheck },
     { key: 'assets', href: '/assets', label: fa.nav.assets, icon: Cpu },
     { key: 'organization', href: '/organization', label: fa.nav.organization, icon: Building2 },
     { key: 'scan', href: '/m/scan', label: 'اسکنر سریع QR (تکنسین)', icon: QrCode },

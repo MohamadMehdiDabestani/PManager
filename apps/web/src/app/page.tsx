@@ -3,13 +3,21 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  CalendarClock,
   CheckCircle2,
+  ClipboardList,
   Cpu,
   Gauge,
   QrCode,
   ShieldAlert,
 } from 'lucide-react';
-import { listAssets, listAccessiblePlants, toPersianDigits } from '@cmms/core';
+import {
+  listAssets,
+  listAccessiblePlants,
+  listPmSchedules,
+  listWorkOrders,
+  toPersianDigits,
+} from '@cmms/core';
 import fa from '@/messages/fa.json';
 import { getServerContext } from '@/lib/server-context';
 import { AppShell } from '@/components/layout/app-shell';
@@ -38,12 +46,16 @@ export default async function HomePage() {
 
   let assetList: Awaited<ReturnType<typeof listAssets>> = [];
   let plantList: Awaited<ReturnType<typeof listAccessiblePlants>> = [];
+  let scheduleList: Awaited<ReturnType<typeof listPmSchedules>> = [];
+  let workOrderList: Awaited<ReturnType<typeof listWorkOrders>> = [];
   let dbConnected = true;
 
   try {
-    [assetList, plantList] = await Promise.all([
+    [assetList, plantList, scheduleList, workOrderList] = await Promise.all([
       listAssets(ctx),
       listAccessiblePlants(ctx),
+      listPmSchedules(ctx),
+      listWorkOrders(ctx),
     ]);
   } catch {
     dbConnected = false;
@@ -51,32 +63,36 @@ export default async function HomePage() {
 
   const operationalCount = assetList.filter((a) => a.status === 'OPERATIONAL').length;
   const lotoCount = assetList.filter((a) => a.requiresLoto).length;
-  const criticalCount = assetList.filter((a) => a.criticality === 'CRITICAL').length;
+  const activeSchedulesCount = scheduleList.filter((s) => s.active).length;
+  const overdueWoCount = workOrderList.filter((w) => w.status === 'OVERDUE').length;
+  const openWoCount = workOrderList.filter(
+    (w) => w.status === 'OPEN' || w.status === 'ASSIGNED' || w.status === 'IN_PROGRESS',
+  ).length;
 
   const kpis = [
     {
       label: 'کل تجهیزات ثبت‌شده در سایت',
       value: toPersianDigits(assetList.length),
-      sub: `${toPersianDigits(operationalCount)} دستگاه در مدار تولید`,
+      sub: `${toPersianDigits(operationalCount)} دستگاه در مدار تولید (${toPersianDigits(lotoCount)} دارای LOTO)`,
       badge: 'درخت تجهیزات',
       variant: 'info' as const,
       icon: Cpu,
     },
     {
-      label: 'تجهیزات دارای قفل ایمنی (LOTO)',
-      value: toPersianDigits(lotoCount),
-      sub: 'الزام تایید ایزولاسیون قبل از شروع کار',
-      badge: 'ایمنی ۱۰۰٪',
+      label: 'برنامه‌های فعال زمان‌بندی نت (PM)',
+      value: toPersianDigits(activeSchedulesCount),
+      sub: 'تقویمی، کارکردی (کنتور) و ترکیبی در منطقه زمانی تهران',
+      badge: 'موتور PM',
       variant: 'warning' as const,
-      icon: ShieldAlert,
+      icon: CalendarClock,
     },
     {
-      label: 'تجهیزات با درجه اهمیت بحرانی (A)',
-      value: toPersianDigits(criticalCount),
-      sub: 'اولویت اول در زمان‌بندی نت پیشگیرانه',
-      badge: 'حساس',
-      variant: 'destructive' as const,
-      icon: AlertTriangle,
+      label: 'دستورکارهای فعال و عقب‌افتاده',
+      value: toPersianDigits(openWoCount + overdueWoCount),
+      sub: `${toPersianDigits(overdueWoCount)} مورد عقب‌افتاده (Overdue) | ${toPersianDigits(openWoCount)} در جریان`,
+      badge: overdueWoCount > 0 ? 'نیاز به پیگیری' : 'به‌روز',
+      variant: overdueWoCount > 0 ? ('destructive' as const) : ('info' as const),
+      icon: ClipboardList,
     },
     {
       label: 'انطباق نت پیشگیرانه (PM Compliance)',
