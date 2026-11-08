@@ -1,5 +1,5 @@
 {
-  "id": "4820b584-4b44-4859-859b-aa51585d9578",
+  "id": "5ed13b0b-807c-4d68-b875-5e252a4e6b4b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -81,7 +81,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "asset_meter_readings_recorded_by_id_users_id_fk": {
@@ -94,7 +94,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -184,7 +184,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -359,7 +359,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "assets_location_id_locations_id_fk": {
@@ -372,7 +372,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -532,7 +532,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -638,7 +638,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "downtime_logs_asset_id_assets_id_fk": {
@@ -651,7 +651,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "downtime_logs_work_order_id_work_orders_id_fk": {
@@ -664,7 +664,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -773,7 +773,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -941,7 +941,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "notifications_work_order_id_work_orders_id_fk": {
@@ -954,7 +954,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1077,7 +1077,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -1347,7 +1347,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "pm_schedules_asset_id_assets_id_fk": {
@@ -1360,7 +1360,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "pm_schedules_template_id_pm_templates_id_fk": {
@@ -1373,7 +1373,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "pm_schedules_meter_id_asset_meters_id_fk": {
@@ -1386,7 +1386,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "pm_schedules_default_assignee_id_users_id_fk": {
@@ -1399,7 +1399,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1508,7 +1508,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -1547,7 +1547,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "user_plants_plant_id_plants_id_fk": {
@@ -1560,7 +1560,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1818,7 +1818,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Cascade",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "work_order_part_usages_part_id_parts_id_fk": {
@@ -1831,7 +1831,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "work_order_part_usages_recorded_by_id_users_id_fk": {
@@ -1844,7 +1844,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -2105,7 +2105,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "work_orders_asset_id_assets_id_fk": {
@@ -2118,7 +2118,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "Restrict",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "work_orders_pm_schedule_id_pm_schedules_id_fk": {
@@ -2131,7 +2131,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "work_orders_assignee_id_users_id_fk": {
@@ -2144,7 +2144,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "work_orders_created_by_id_users_id_fk": {
@@ -2157,7 +2157,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "work_orders_loto_verified_by_id_users_id_fk": {
@@ -2170,7 +2170,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "SetNull",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

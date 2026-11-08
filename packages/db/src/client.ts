@@ -1,13 +1,15 @@
-import { Pool } from 'pg';
+import pg from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from './schema/index.js';
+import * as schema from './schema/index';
 
+const { Pool } = pg;
+export type DbPool = pg.Pool;
 export type DbClient = NodePgDatabase<typeof schema>;
 
-let globalPool: Pool | undefined;
+let globalPool: DbPool | undefined;
 let globalDb: DbClient | undefined;
 
-export function createDbConnection(connectionString?: string): { pool: Pool; db: DbClient } {
+export function createDbConnection(connectionString?: string): { pool: DbPool; db: DbClient } {
   const url = connectionString ?? process.env['DATABASE_URL'];
   if (!url) {
     throw new Error('DATABASE_URL is not configured');

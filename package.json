@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "db:generate": "pnpm --filter @cmms/db db:generate",
     "db:migrate": "pnpm --filter @cmms/db db:migrate",
+    "db:seed": "pnpm --filter @cmms/db db:seed",
     "db:studio": "pnpm --filter @cmms/db db:studio"
   },
   "devDependencies": {

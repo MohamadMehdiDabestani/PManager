@@ -233,36 +233,36 @@ CREATE TABLE "work_orders" (
 	CONSTRAINT "work_orders_client_id_unique" UNIQUE("client_id")
 );
 --> statement-breakpoint
-ALTER TABLE "asset_meter_readings" ADD CONSTRAINT "asset_meter_readings_meter_id_asset_meters_id_fk" FOREIGN KEY ("meter_id") REFERENCES "public"."asset_meters"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "asset_meter_readings" ADD CONSTRAINT "asset_meter_readings_recorded_by_id_users_id_fk" FOREIGN KEY ("recorded_by_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "asset_meters" ADD CONSTRAINT "asset_meters_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "assets" ADD CONSTRAINT "assets_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "assets" ADD CONSTRAINT "assets_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "locations" ADD CONSTRAINT "locations_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "parts" ADD CONSTRAINT "parts_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_template_id_pm_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."pm_templates"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_meter_id_asset_meters_id_fk" FOREIGN KEY ("meter_id") REFERENCES "public"."asset_meters"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_default_assignee_id_users_id_fk" FOREIGN KEY ("default_assignee_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "pm_templates" ADD CONSTRAINT "pm_templates_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_plants" ADD CONSTRAINT "user_plants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_plants" ADD CONSTRAINT "user_plants_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE Cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_part_id_parts_id_fk" FOREIGN KEY ("part_id") REFERENCES "public"."parts"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_recorded_by_id_users_id_fk" FOREIGN KEY ("recorded_by_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE Restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_pm_schedule_id_pm_schedules_id_fk" FOREIGN KEY ("pm_schedule_id") REFERENCES "public"."pm_schedules"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_assignee_id_users_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_created_by_id_users_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_loto_verified_by_id_users_id_fk" FOREIGN KEY ("loto_verified_by_id") REFERENCES "public"."users"("id") ON DELETE SetNull ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "asset_meter_readings" ADD CONSTRAINT "asset_meter_readings_meter_id_asset_meters_id_fk" FOREIGN KEY ("meter_id") REFERENCES "public"."asset_meters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "asset_meter_readings" ADD CONSTRAINT "asset_meter_readings_recorded_by_id_users_id_fk" FOREIGN KEY ("recorded_by_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "asset_meters" ADD CONSTRAINT "asset_meters_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "assets" ADD CONSTRAINT "assets_location_id_locations_id_fk" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "downtime_logs" ADD CONSTRAINT "downtime_logs_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "locations" ADD CONSTRAINT "locations_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "parts" ADD CONSTRAINT "parts_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_template_id_pm_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."pm_templates"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_meter_id_asset_meters_id_fk" FOREIGN KEY ("meter_id") REFERENCES "public"."asset_meters"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_schedules" ADD CONSTRAINT "pm_schedules_default_assignee_id_users_id_fk" FOREIGN KEY ("default_assignee_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "pm_templates" ADD CONSTRAINT "pm_templates_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_plants" ADD CONSTRAINT "user_plants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_plants" ADD CONSTRAINT "user_plants_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_work_order_id_work_orders_id_fk" FOREIGN KEY ("work_order_id") REFERENCES "public"."work_orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_part_id_parts_id_fk" FOREIGN KEY ("part_id") REFERENCES "public"."parts"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_order_part_usages" ADD CONSTRAINT "work_order_part_usages_recorded_by_id_users_id_fk" FOREIGN KEY ("recorded_by_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_plant_id_plants_id_fk" FOREIGN KEY ("plant_id") REFERENCES "public"."plants"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_asset_id_assets_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."assets"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_pm_schedule_id_pm_schedules_id_fk" FOREIGN KEY ("pm_schedule_id") REFERENCES "public"."pm_schedules"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_assignee_id_users_id_fk" FOREIGN KEY ("assignee_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_created_by_id_users_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "work_orders" ADD CONSTRAINT "work_orders_loto_verified_by_id_users_id_fk" FOREIGN KEY ("loto_verified_by_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "meter_readings_meter_recorded_idx" ON "asset_meter_readings" USING btree ("meter_id","recorded_at");--> statement-breakpoint
 CREATE INDEX "asset_meters_asset_idx" ON "asset_meters" USING btree ("asset_id");--> statement-breakpoint
 CREATE INDEX "assets_plant_status_idx" ON "assets" USING btree ("plant_id","status");--> statement-breakpoint
