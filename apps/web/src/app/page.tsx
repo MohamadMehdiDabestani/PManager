@@ -1,44 +1,242 @@
-import { toPersianDigits } from '@cmms/core/i18n';
+import Link from 'next/link';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Cpu,
+  Gauge,
+  QrCode,
+  ShieldAlert,
+} from 'lucide-react';
+import { listAssets, listAccessiblePlants, toPersianDigits } from '@cmms/core';
 import fa from '@/messages/fa.json';
+import { getServerContext } from '@/lib/server-context';
+import { AppShell } from '@/components/layout/app-shell';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  const { ctx, sessionUser } = await getServerContext();
+
+  let assetList: Awaited<ReturnType<typeof listAssets>> = [];
+  let plantList: Awaited<ReturnType<typeof listAccessiblePlants>> = [];
+  let dbConnected = true;
+
+  try {
+    [assetList, plantList] = await Promise.all([
+      listAssets(ctx),
+      listAccessiblePlants(ctx),
+    ]);
+  } catch {
+    dbConnected = false;
+  }
+
+  const operationalCount = assetList.filter((a) => a.status === 'OPERATIONAL').length;
+  const lotoCount = assetList.filter((a) => a.requiresLoto).length;
+  const criticalCount = assetList.filter((a) => a.criticality === 'CRITICAL').length;
+
   const kpis = [
-    { label: 'انطباق نت پیشگیرانه (PM Compliance)', value: `${toPersianDigits(94)}%`, badge: 'مطلوب' },
-    { label: 'دستورکارهای فعال امروز', value: toPersianDigits(12), badge: 'در جریان' },
-    { label: 'میانگین زمان تعمیر (MTTR)', value: `${toPersianDigits(45)} دقیقه`, badge: 'بهبودیافته' },
-    { label: 'ایمنی LOTO تاییدشده', value: `${toPersianDigits(100)}%`, badge: 'الزامی' },
+    {
+      label: 'کل تجهیزات ثبت‌شده در سایت',
+      value: toPersianDigits(assetList.length),
+      sub: `${toPersianDigits(operationalCount)} دستگاه در مدار تولید`,
+      badge: 'درخت تجهیزات',
+      variant: 'info' as const,
+      icon: Cpu,
+    },
+    {
+      label: 'تجهیزات دارای قفل ایمنی (LOTO)',
+      value: toPersianDigits(lotoCount),
+      sub: 'الزام تایید ایزولاسیون قبل از شروع کار',
+      badge: 'ایمنی ۱۰۰٪',
+      variant: 'warning' as const,
+      icon: ShieldAlert,
+    },
+    {
+      label: 'تجهیزات با درجه اهمیت بحرانی (A)',
+      value: toPersianDigits(criticalCount),
+      sub: 'اولویت اول در زمان‌بندی نت پیشگیرانه',
+      badge: 'حساس',
+      variant: 'destructive' as const,
+      icon: AlertTriangle,
+    },
+    {
+      label: 'انطباق نت پیشگیرانه (PM Compliance)',
+      value: `${toPersianDigits(94)}%`,
+      sub: `سایت فعال: ${plantList[0]?.name ?? 'پارس صنعت'}`,
+      badge: 'مطلوب',
+      variant: 'success' as const,
+      icon: CheckCircle2,
+    },
   ];
 
   return (
-    <main className="mx-auto max-w-6xl p-6 md:p-10">
-      <header className="mb-8 border-b border-slate-800 pb-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white md:text-3xl">{fa.app.title}</h1>
-            <p className="mt-2 text-sm text-slate-400">{fa.app.subtitle}</p>
-          </div>
-          <span className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300">
-            آماده بهره‌برداری در شبکه داخلی (Intranet)
-          </span>
+    <AppShell activeNav="dashboard" user={sessionUser}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{fa.app.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{fa.app.subtitle}</p>
         </div>
-      </header>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/m/scan">
+              <QrCode className="h-4 w-4 me-2" />
+              اسکنر QR تکنسین
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/assets">
+              مدیریت درخت تجهیزات
+              <ArrowLeft className="h-4 w-4 ms-2" />
+            </Link>
+          </Button>
+        </div>
+      </div>
 
+      {!dbConnected && (
+        <Card className="border-amber-500/40 bg-amber-500/10">
+          <CardHeader>
+            <CardTitle className="text-amber-300 text-base">
+              دیتابیس هنوز مایگریت یا Seed نشده است
+            </CardTitle>
+            <CardDescription className="text-amber-200/80">
+              برای مشاهده تجهیزات نمونه کارخانه، دستور{' '}
+              <code dir="ltr" className="rounded bg-black/30 px-1.5 py-0.5 text-xs">
+                pnpm db:migrate && pnpm db:seed
+              </code>{' '}
+              را اجرا نمایید.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* KPI Cards built with shadcn/ui Card & Badge */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-5 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">{item.label}</span>
-              <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
-                {item.badge}
-              </span>
-            </div>
-            <p className="mt-4 text-2xl font-bold text-white">{item.value}</p>
-          </div>
-        ))}
+        {kpis.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Card key={item.label}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardDescription className="text-xs font-medium">{item.label}</CardDescription>
+                <Badge variant={item.variant}>{item.badge}</Badge>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl font-bold">{item.value}</div>
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">{item.sub}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </section>
-    </main>
+
+      {/* Recent Assets & Meter Status Table */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              وضعیت لحظه‌ای ماشین‌آلات و کنتورهای کارکرد
+            </CardTitle>
+            <CardDescription>
+              لیست تجهیزات سایت به همراه وضعیت عملیاتی، الزامات ایمنی LOTO و آخرین ساعت کارکرد
+            </CardDescription>
+          </div>
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/assets">مشاهده همه تجهیزات</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {assetList.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              هیچ تجهیزی ثبت نشده است. از بخش «درخت تجهیزات» اولین دستگاه کارخانه را ثبت کنید یا اسکریپت Seed را اجرا نمایید.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>کد تجهیز</TableHead>
+                  <TableHead>نام دستگاه</TableHead>
+                  <TableHead>سالن / خط</TableHead>
+                  <TableHead>وضعیت</TableHead>
+                  <TableHead>ایمنی LOTO</TableHead>
+                  <TableHead>ساعت کارکرد فعلی</TableHead>
+                  <TableHead>شناسنامه</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assetList.map((asset) => {
+                  const primaryMeter = asset.meters[0];
+                  return (
+                    <TableRow key={asset.id}>
+                      <TableCell className="font-mono font-semibold">
+                        <bdi>{asset.code}</bdi>
+                      </TableCell>
+                      <TableCell className="font-medium">{asset.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{asset.locationName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            asset.status === 'OPERATIONAL'
+                              ? 'success'
+                              : asset.status === 'DOWN'
+                                ? 'destructive'
+                                : 'warning'
+                          }
+                        >
+                          {fa.assetStatus[asset.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {asset.requiresLoto ? (
+                          <Badge variant="destructive">الزامی (LOTO)</Badge>
+                        ) : (
+                          <Badge variant="secondary">عادی</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {primaryMeter ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm">
+                            <Gauge className="h-4 w-4 text-primary" />
+                            {toPersianDigits(primaryMeter.currentReading)} {primaryMeter.unit}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">بدون کنتور</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/assets/${asset.id}`}>جزئیات و QR</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </AppShell>
   );
 }
