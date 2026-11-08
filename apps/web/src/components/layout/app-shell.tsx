@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {
   Activity,
+  Bell,
   Building2,
   CalendarClock,
   ClipboardCheck,
@@ -27,6 +28,7 @@ interface AppShellProps {
     | 'pm-templates'
     | 'pm-schedules'
     | 'work-orders'
+    | 'notifications'
     | 'organization'
     | 'scan';
   user?: {
@@ -42,8 +44,10 @@ export function AppShell({ children, activeNav = 'dashboard', user }: AppShellPr
     { key: 'work-orders', href: '/work-orders', label: fa.nav.workOrders, icon: ClipboardList },
     { key: 'pm-schedules', href: '/pm-schedules', label: fa.nav.pmSchedules, icon: CalendarClock },
     { key: 'pm-templates', href: '/pm-templates', label: fa.nav.pmTemplates, icon: ClipboardCheck },
+    { key: 'notifications', href: '/notifications', label: fa.nav.notifications, icon: Bell },
     { key: 'assets', href: '/assets', label: fa.nav.assets, icon: Cpu },
     { key: 'organization', href: '/organization', label: fa.nav.organization, icon: Building2 },
+    { key: 'mobile-wo', href: '/m/work-orders', label: 'پنل همراه تکنسین (PWA)', icon: Wrench },
     { key: 'scan', href: '/m/scan', label: 'اسکنر سریع QR (تکنسین)', icon: QrCode },
   ] as const;
 
