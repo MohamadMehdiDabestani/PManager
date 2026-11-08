@@ -12,6 +12,8 @@ Two experiences, one design system:
 ## Design tokens
 - Font: Vazirmatn (self-hosted). Base 16px mobile / 14-15px desktop tables. Line-height 1.7 for Persian body text.
 - Radius 12px cards, 10px controls. Spacing scale 4/8/12/16/24/32.
+- Design System: **shadcn/ui** (New York style, slate base, CSS variables). All reusable components reside in `apps/web/src/components/ui/` (`Button`, `Card`, `Badge`, `Table`, `Dialog`, `Tabs`, `Input`, `Label`, `Alert`, `Separator`).
+- Button sizing: use `size="industrial"` (h-14 / 56px, rounded-lg, 16px text) for primary actions in technician screens (`/m/*`) to support touch with heavy work gloves.
 - Semantic status colors (always paired with icon + text, never color alone):
   - Overdue/critical: red. Due today/warning: amber. In progress: blue. Done: green. On hold/neutral: gray.
 - Light theme default; high-contrast option and dark theme for control rooms. Contrast >= 4.5:1 (7:1 for key technician actions).
