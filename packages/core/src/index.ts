@@ -7,3 +7,7 @@ export * from './services/audit-service';
 export * from './services/user-service';
 export * from './services/plant-service';
 export * from './services/asset-service';
+export * from './services/pm-template-service';
+export * from './services/pm-schedule-service';
+export * from './services/work-order-service';
+

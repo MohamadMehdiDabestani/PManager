@@ -80,3 +80,72 @@ export function shiftToWorkingDay(date: Date, workingDays: number[]): Date {
   }
   return result;
 }
+
+export function advanceNextDueOnCompletion(
+  schedule: Pick<
+    PmSchedule,
+    'triggerType' | 'anchorMode' | 'intervalDays' | 'intervalMeter' | 'nextDueAt'
+  >,
+  completion: {
+    completedAt: Date;
+    completedMeter?: number;
+    meter?: MeterState | null;
+    workingDays?: number[];
+  },
+): { nextDueAt: Date | null; nextDueMeter: number | null } {
+  const workingDays = completion.workingDays ?? [6, 0, 1, 2, 3, 4];
+  let nextDueAt: Date | null = null;
+  let nextDueMeter: number | null = null;
+
+  if (schedule.triggerType === 'CALENDAR' || schedule.triggerType === 'HYBRID') {
+    if (schedule.intervalDays && schedule.intervalDays > 0) {
+      if (schedule.anchorMode === 'FIXED' && schedule.nextDueAt) {
+        nextDueAt = new Date(schedule.nextDueAt.getTime() + schedule.intervalDays * 86_400_000);
+      } else {
+        nextDueAt = new Date(completion.completedAt.getTime() + schedule.intervalDays * 86_400_000);
+      }
+      nextDueAt = shiftToWorkingDay(nextDueAt, workingDays);
+    }
+  }
+
+  if (
+    (schedule.triggerType === 'METER' || schedule.triggerType === 'HYBRID') &&
+    schedule.intervalMeter &&
+    schedule.intervalMeter > 0
+  ) {
+    const baseMeter = completion.completedMeter ?? completion.meter?.currentReading ?? 0;
+    nextDueMeter = baseMeter + schedule.intervalMeter;
+
+    if (completion.meter?.dailyAverageUsage && completion.meter.dailyAverageUsage > 0) {
+      const daysLeft = Math.ceil(schedule.intervalMeter / completion.meter.dailyAverageUsage);
+      const projectedDate = shiftToWorkingDay(
+        new Date(completion.completedAt.getTime() + daysLeft * 86_400_000),
+        workingDays,
+      );
+      if (!nextDueAt || projectedDate < nextDueAt) {
+        nextDueAt = projectedDate;
+      }
+    }
+  }
+
+  return { nextDueAt, nextDueMeter };
+}
+
+/**
+ * Calculates rolling average daily usage from meter reading records.
+ * Readings should ideally span a few days or weeks.
+ */
+export function calculateDailyAverageUsage(
+  readings: Array<{ reading: number; recordedAt: Date }>,
+): number | undefined {
+  if (readings.length < 2) return undefined;
+  const sorted = [...readings].sort((a, b) => a.recordedAt.getTime() - b.recordedAt.getTime());
+  const oldest = sorted[0];
+  const newest = sorted[sorted.length - 1];
+  if (!oldest || !newest) return undefined;
+  const diffDays = (newest.recordedAt.getTime() - oldest.recordedAt.getTime()) / 86_400_000;
+  const diffReading = newest.reading - oldest.reading;
+  if (diffDays <= 0 || diffReading < 0) return undefined;
+  return diffReading / diffDays;
+}
+

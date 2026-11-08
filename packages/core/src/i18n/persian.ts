@@ -32,3 +32,34 @@ export function normalizePersianText(input: string): string {
 export function toPersianDigits(input: string | number): string {
   return String(input).replace(/\d/g, (d) => PERSIAN_DIGITS[Number(d)] ?? d);
 }
+
+const jalaliDateTimeFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  timeZone: 'Asia/Tehran',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const jalaliDateFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  timeZone: 'Asia/Tehran',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+export function formatJalaliDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return '-';
+  return jalaliDateTimeFormatter.format(d);
+}
+
+export function formatJalaliDate(date: Date | string | null | undefined): string {
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return '-';
+  return jalaliDateFormatter.format(d);
+}
+
