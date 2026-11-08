@@ -1,5 +1,5 @@
 import { Queue, type DefaultJobOptions } from 'bullmq';
-import { createRedis, QUEUE_PREFIX } from './connection.js';
+import { createRedis, QUEUE_PREFIX } from './connection';
 
 export const QUEUES = {
   PM_SCHEDULER: 'pm-scheduler',

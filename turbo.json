@@ -1,5 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [".env"],
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "NODE_ENV",
+    "TZ",
+    "QUEUE_PREFIX",
+    "AUTH_SECRET",
+    "AUTH_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

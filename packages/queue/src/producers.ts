@@ -1,4 +1,4 @@
-import { getQueue, QUEUES, JOBS } from './queues.js';
+import { getQueue, QUEUES, JOBS } from './queues';
 
 export const ids = {
   notification: (id: string) => `ntf-${id}`,

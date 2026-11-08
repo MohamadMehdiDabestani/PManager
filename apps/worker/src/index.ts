@@ -1,3 +1,4 @@
+import './env';
 import { Worker, type Processor } from 'bullmq';
 import { closeDb } from '@cmms/db';
 import {
@@ -9,7 +10,7 @@ import {
   registerSchedulers,
   type QueueName,
 } from '@cmms/queue';
-import { logger } from './logger.js';
+import { logger } from './logger';
 
 type Handlers = Record<string, Processor>;
 

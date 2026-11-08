@@ -1,4 +1,4 @@
-import { getQueue, QUEUES, JOBS } from './queues.js';
+import { getQueue, QUEUES, JOBS } from './queues';
 
 const TZ = 'Asia/Tehran';
 
