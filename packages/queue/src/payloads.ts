@@ -17,3 +17,7 @@ export const EscalatePayload = z.object({
 export const OverdueScanPayload = z.object({
   plantId: z.string().uuid().optional(),
 });
+
+export const ProjectMeterDuePayload = z.object({
+  meterId: z.string().uuid().optional(),
+});

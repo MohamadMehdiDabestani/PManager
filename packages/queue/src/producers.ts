@@ -23,6 +23,51 @@ export async function scheduleEscalation(workOrderId: string, level: 1 | 2 | 3, 
   );
 }
 
+export async function enqueueGenerateWorkOrders(payload?: {
+  scheduleId?: string;
+  horizonDays?: number;
+}) {
+  return getQueue(QUEUES.PM_SCHEDULER).add(
+    JOBS.GENERATE_WORK_ORDERS,
+    payload ?? { horizonDays: 0 },
+    payload?.scheduleId ? { jobId: `gen-${payload.scheduleId}-${Date.now()}` } : undefined,
+  );
+}
+
+export async function enqueueProjectMeterDue(payload?: { meterId?: string }) {
+  return getQueue(QUEUES.PM_SCHEDULER).add(
+    JOBS.PROJECT_METER_DUE,
+    payload ?? {},
+    payload?.meterId ? { jobId: `proj-${payload.meterId}-${Date.now()}` } : undefined,
+  );
+}
+
+export async function enqueueReminders(
+  workOrderId: string,
+  dueAt: Date,
+  offsetsMin: number[],
+) {
+  const now = Date.now();
+  const queue = getQueue(QUEUES.NOTIFICATIONS);
+  const promises: Promise<unknown>[] = [];
+
+  for (const offset of offsetsMin) {
+    const targetTime = dueAt.getTime() + offset * 60_000;
+    const delay = targetTime - now;
+    if (delay > 0) {
+      promises.push(
+        queue.add(
+          JOBS.SEND_NOTIFICATION,
+          { workOrderId, reminderOffsetMin: offset },
+          { jobId: ids.reminder(workOrderId, offset), delay },
+        ),
+      );
+    }
+  }
+
+  await Promise.allSettled(promises);
+}
+
 export async function cancelWorkOrderJobs(
   workOrderId: string,
   offsets: number[],

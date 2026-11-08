@@ -11,8 +11,12 @@ import {
   type QueueName,
 } from '@cmms/queue';
 import { logger } from './logger';
+import { processGenerateWorkOrders } from './processors/generate-work-orders';
+import { processOverdueScan } from './processors/overdue-scan';
+import { processProjectMeterDue } from './processors/project-meter-due';
 
 type Handlers = Record<string, Processor>;
+
 
 function route(handlers: Handlers): Processor {
   return async (job, token) => {
@@ -59,14 +63,9 @@ export async function boot() {
   startWorker(
     QUEUES.PM_SCHEDULER,
     {
-      [JOBS.GENERATE_WORK_ORDERS]: async (job) => {
-        logger.info({ jobId: job.id }, 'Running generate-work-orders');
-        return { ok: true };
-      },
-      [JOBS.OVERDUE_SCAN]: async (job) => {
-        logger.info({ jobId: job.id }, 'Running overdue-scan');
-        return { ok: true };
-      },
+      [JOBS.GENERATE_WORK_ORDERS]: processGenerateWorkOrders,
+      [JOBS.OVERDUE_SCAN]: processOverdueScan,
+      [JOBS.PROJECT_METER_DUE]: processProjectMeterDue,
     },
     { concurrency: 1 },
   );
