@@ -11,6 +11,9 @@ import {
   assets,
   assetMeters,
   parts,
+  pmTemplates,
+  pmSchedules,
+  workOrders,
 } from './schema/index';
 
 const envPaths = [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env')];
@@ -281,6 +284,244 @@ async function seed() {
           minQuantity: p.minQuantity,
         })
         .onConflictDoNothing();
+    }
+
+    // ۶. ایجاد قالب‌های چک‌لیست نت (PM Templates) و برنامه‌های زمان‌بندی (PM Schedules)
+    const existingTemplates = await db
+      .select()
+      .from(pmTemplates)
+      .where(eq(pmTemplates.plantId, mainPlant.id));
+
+    if (existingTemplates.length === 0) {
+      const [pressAsset] = await db
+        .select()
+        .from(assets)
+        .where(eq(assets.code, 'PRS-HYD-01'));
+      const [compAsset] = await db
+        .select()
+        .from(assets)
+        .where(eq(assets.code, 'CMP-AIR-01'));
+      const [convAsset] = await db
+        .select()
+        .from(assets)
+        .where(eq(assets.code, 'CNV-ASM-02'));
+      const [techUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, 'tech1'));
+
+      const [tplPress] = await db
+        .insert(pmTemplates)
+        .values({
+          plantId: mainPlant.id,
+          name: 'سرویس ماهانه پرس هیدرولیک ۱۰۰۰ تن',
+          description: 'بازرسی فشار مدار، دمای روغن، شیرهای پروپورشنال و نشتی جک‌ها',
+          estimatedMinutes: 90,
+          requiredPpe: ['کلاه ایمنی', 'عینک ایمنی', 'دستکش عایق برق', 'کفش ایمنی'],
+          checklist: [
+            {
+              id: 'chk-1',
+              label: 'بررسی سطح و شفافیت روغن مخزن هیدرولیک',
+              type: 'BOOLEAN',
+              required: true,
+            },
+            {
+              id: 'chk-2',
+              label: 'فشار خط اصلی پمپ در حالت بار کامل',
+              type: 'NUMBER',
+              unit: 'bar',
+              minValue: 210,
+              maxValue: 250,
+              required: true,
+            },
+            {
+              id: 'chk-3',
+              label: 'دمای روغن هیدرولیک در حین کار',
+              type: 'NUMBER',
+              unit: '°C',
+              minValue: 35,
+              maxValue: 55,
+              required: true,
+            },
+            {
+              id: 'chk-4',
+              label: 'تصویر وضعیت گیج فشار و فیلتر برگشت',
+              type: 'PHOTO',
+              required: false,
+            },
+          ],
+        })
+        .returning();
+
+      const [tplComp] = await db
+        .insert(pmTemplates)
+        .values({
+          plantId: mainPlant.id,
+          name: 'سرویس ۵۰۰ ساعته کمپرسور اسکرو اطلس کوپکو',
+          description: 'تعویض فیلتر هوا، بررسی سپراتور روغن و تخلیه کندانس درایر',
+          estimatedMinutes: 60,
+          requiredPpe: ['گوشی صداگیر', 'عینک ایمنی', 'دستکش ضدبرش', 'ماسک تنفسی'],
+          checklist: [
+            {
+              id: 'chk-c1',
+              label: 'تمیزکاری یا تعویض المنت فیلتر هوای ورودی',
+              type: 'BOOLEAN',
+              required: true,
+            },
+            {
+              id: 'chk-c2',
+              label: 'اختلاف فشار فیلتر سپراتور روغن',
+              type: 'NUMBER',
+              unit: 'bar',
+              minValue: 0,
+              maxValue: 0.8,
+              required: true,
+            },
+            {
+              id: 'chk-c3',
+              label: 'بررسی عملکرد شیر تخلیه اتوماتیک کندانس',
+              type: 'BOOLEAN',
+              required: true,
+            },
+          ],
+        })
+        .returning();
+
+      const [tplConv] = await db
+        .insert(pmTemplates)
+        .values({
+          plantId: mainPlant.id,
+          name: 'بازرسی و گریس‌کاری هفتگی نوار نقاله خط مونتاژ',
+          description: 'روان‌کاری یاتاقان‌ها، تنظیم کشش زنجیر و کنترل کلیدهای امرجنسی طنابی',
+          estimatedMinutes: 45,
+          requiredPpe: ['کفش ایمنی', 'دستکش ضدبرش'],
+          checklist: [
+            {
+              id: 'chk-v1',
+              label: 'گریس‌کاری ۴ عدد یاتاقان سر و ته نوار با گریس لیتیوم',
+              type: 'BOOLEAN',
+              required: true,
+            },
+            {
+              id: 'chk-v2',
+              label: 'تست عملکرد میکروسوئیچ توقف اضطراری (Pull Cord)',
+              type: 'BOOLEAN',
+              required: true,
+            },
+            {
+              id: 'chk-v3',
+              label: 'گزارش وضعیت ظاهری زنجیر و دنده‌ها',
+              type: 'TEXT',
+              required: false,
+            },
+          ],
+        })
+        .returning();
+
+      const now = new Date();
+      const inTwoDays = new Date(now.getTime() + 2 * 86_400_000);
+      const inFiveDays = new Date(now.getTime() + 5 * 86_400_000);
+      const yesterday = new Date(now.getTime() - 1 * 86_400_000);
+
+      if (pressAsset && tplPress) {
+        const [schedPress] = await db
+          .insert(pmSchedules)
+          .values({
+            plantId: mainPlant.id,
+            assetId: pressAsset.id,
+            templateId: tplPress.id,
+            triggerType: 'CALENDAR',
+            anchorMode: 'FIXED',
+            intervalDays: 30,
+            nextDueAt: inTwoDays,
+            leadDays: 3,
+            priority: 'URGENT',
+            defaultAssigneeId: techUser?.id ?? null,
+            active: true,
+          })
+          .returning();
+
+        if (schedPress) {
+          await db
+            .insert(workOrders)
+            .values({
+              plantId: mainPlant.id,
+              assetId: pressAsset.id,
+              pmScheduleId: schedPress.id,
+              type: 'PM',
+              status: 'ASSIGNED',
+              priority: 'URGENT',
+              title: tplPress.name,
+              description: tplPress.description,
+              assigneeId: techUser?.id ?? null,
+              dueAt: inTwoDays,
+              checklistSnapshot: tplPress.checklist,
+            })
+            .onConflictDoNothing();
+        }
+      }
+
+      if (compAsset && tplComp) {
+        const [compMeter] = await db
+          .select()
+          .from(assetMeters)
+          .where(eq(assetMeters.assetId, compAsset.id));
+
+        await db.insert(pmSchedules).values({
+          plantId: mainPlant.id,
+          assetId: compAsset.id,
+          templateId: tplComp.id,
+          triggerType: 'HYBRID',
+          anchorMode: 'FLOATING',
+          intervalDays: 60,
+          meterId: compMeter?.id ?? null,
+          intervalMeter: 500,
+          lastDoneMeter: 11500,
+          nextDueAt: inFiveDays,
+          leadDays: 5,
+          priority: 'HIGH',
+          defaultAssigneeId: techUser?.id ?? null,
+          active: true,
+        });
+      }
+
+      if (convAsset && tplConv) {
+        const [schedConv] = await db
+          .insert(pmSchedules)
+          .values({
+            plantId: mainPlant.id,
+            assetId: convAsset.id,
+            templateId: tplConv.id,
+            triggerType: 'CALENDAR',
+            anchorMode: 'FLOATING',
+            intervalDays: 7,
+            nextDueAt: yesterday,
+            leadDays: 2,
+            priority: 'MEDIUM',
+            defaultAssigneeId: techUser?.id ?? null,
+            active: true,
+          })
+          .returning();
+
+        if (schedConv) {
+          await db
+            .insert(workOrders)
+            .values({
+              plantId: mainPlant.id,
+              assetId: convAsset.id,
+              pmScheduleId: schedConv.id,
+              type: 'PM',
+              status: 'OVERDUE',
+              priority: 'HIGH',
+              title: tplConv.name,
+              description: tplConv.description,
+              assigneeId: techUser?.id ?? null,
+              dueAt: yesterday,
+              checklistSnapshot: tplConv.checklist,
+            })
+            .onConflictDoNothing();
+        }
+      }
     }
 
     console.log('✅ داده‌های اولیه کارخانه با موفقیت ثبت شدند.');

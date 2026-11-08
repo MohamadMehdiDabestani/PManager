@@ -32,6 +32,12 @@ export function getDb(connectionString?: string): DbClient {
   return globalDb;
 }
 
+export const db: DbClient = new Proxy({} as DbClient, {
+  get(_target, prop) {
+    return (getDb() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});
+
 export async function closeDb(): Promise<void> {
   if (globalPool) {
     await globalPool.end();
