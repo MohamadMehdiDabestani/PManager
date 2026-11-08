@@ -14,6 +14,7 @@ import {
   pmTemplates,
   pmSchedules,
   workOrders,
+  notifications,
 } from './schema/index';
 
 const envPaths = [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env')];
@@ -34,6 +35,12 @@ async function seed() {
 
   try {
     console.log('🌱 شروع بارگذاری داده‌های اولیه کارخانه (Seed)...');
+
+    // ارتقای افزایشی اسکیمای کانال بله (Bale Bot) بدون از دست رفتن داده‌ها
+    await pool.query(`ALTER TYPE "public"."notification_channel" ADD VALUE IF NOT EXISTS 'BALE';`);
+    await pool.query(
+      `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bale_chat_id" varchar(64);`,
+    );
 
     // ۱. ایجاد کارخانه اصلی
     const [mainPlant] = await db
@@ -133,15 +140,23 @@ async function seed() {
           fullNameNormalized: u.fullName,
           phone: u.phone,
           email: u.email,
+          baleChatId: `bale_${u.username}_chat`,
+          eitaaChatId: `eitaa_${u.username}_chat`,
           passwordHash: hashSecret('123456'),
           pinHash: hashSecret(u.pin),
           role: u.role,
           active: true,
-          channelPreference: ['SMS', 'EITAA', 'EMAIL'],
+          channelPreference: ['SMS', 'BALE', 'EITAA', 'EMAIL'],
         })
         .onConflictDoUpdate({
           target: users.username,
-          set: { fullName: u.fullName, role: u.role },
+          set: {
+            fullName: u.fullName,
+            role: u.role,
+            baleChatId: `bale_${u.username}_chat`,
+            eitaaChatId: `eitaa_${u.username}_chat`,
+            channelPreference: ['SMS', 'BALE', 'EITAA', 'EMAIL'],
+          },
         })
         .returning();
 
@@ -521,6 +536,68 @@ async function seed() {
             })
             .onConflictDoNothing();
         }
+      }
+    }
+
+    // ۷. ایجاد اعلان‌های نمونه در کانال‌های پیامک، ربات بله، ربات ایتا و داخل برنامه
+    const [techUserForNotif] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, 'tech1'));
+    const [supUserForNotif] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, 'supervisor'));
+    const [sampleWo] = await db.select().from(workOrders).limit(1);
+
+    if (techUserForNotif && supUserForNotif) {
+      const sampleNotifs = [
+        {
+          userId: techUserForNotif.id,
+          workOrderId: sampleWo?.id ?? null,
+          kind: 'WO_ASSIGNED',
+          priority: 'HIGH' as const,
+          channel: 'BALE' as const,
+          status: 'SENT' as const,
+          title: 'تخصیص دستورکار نت پیشگیرانه (ربات بله)',
+          body: 'دستورکار سرویس ماهانه پرس هیدرولیک به شما تخصیص یافت. الزام ایمنی LOTO فعال است.',
+          link: sampleWo ? `/m/work-orders/${sampleWo.id}` : '/m/work-orders',
+          idempotencyKey: 'seed-ntf-bale-1',
+          sentAt: new Date(Date.now() - 3600_000),
+        },
+        {
+          userId: supUserForNotif.id,
+          workOrderId: sampleWo?.id ?? null,
+          kind: 'WO_ESCALATION_L1',
+          priority: 'URGENT' as const,
+          channel: 'SMS' as const,
+          status: 'SENT' as const,
+          title: 'هشدار تاخیر دستورکار - سطح ۱ سرپرست شیفت',
+          body: 'تاخیر در بازرسی هفتگی نوار نقاله زنجیری خط مونتاژ ۱ - دستگاه CNV-ASM-02',
+          link: '/work-orders',
+          idempotencyKey: 'seed-ntf-sms-esc-1',
+          sentAt: new Date(Date.now() - 1800_000),
+        },
+        {
+          userId: techUserForNotif.id,
+          workOrderId: sampleWo?.id ?? null,
+          kind: 'WO_REMINDER',
+          priority: 'MEDIUM' as const,
+          channel: 'EITAA' as const,
+          status: 'SENT' as const,
+          title: 'یادآوری موعد سرویس ۵۰۰ ساعته کمپرسور',
+          body: 'موعد سرویس کمپرسور اسکرو اطلس کوپکو کمتر از ۲۴ ساعت آینده است.',
+          link: '/m/work-orders',
+          idempotencyKey: 'seed-ntf-eitaa-1',
+          sentAt: new Date(Date.now() - 900_000),
+        },
+      ];
+
+      for (const n of sampleNotifs) {
+        await db
+          .insert(notifications)
+          .values(n)
+          .onConflictDoNothing({ target: notifications.idempotencyKey });
       }
     }
 

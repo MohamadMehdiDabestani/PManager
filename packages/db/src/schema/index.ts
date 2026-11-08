@@ -80,6 +80,7 @@ export const priorityEnum = pgEnum('work_order_priority', [
 
 export const notificationChannelEnum = pgEnum('notification_channel', [
   'SMS',
+  'BALE',
   'EITAA',
   'EMAIL',
   'IN_APP',
@@ -138,17 +139,18 @@ export const users = pgTable(
     fullNameNormalized: varchar('full_name_normalized', { length: 150 }).notNull(),
     phone: varchar('phone', { length: 20 }).unique(),
     email: varchar('email', { length: 255 }).unique(),
+    baleChatId: varchar('bale_chat_id', { length: 64 }),
     eitaaChatId: varchar('eitaa_chat_id', { length: 64 }),
     passwordHash: text('password_hash').notNull(),
     pinHash: text('pin_hash'),
     role: roleEnum('role').notNull().default('TECHNICIAN'),
     active: boolean('active').notNull().default(true),
     rulesVersion: integer('rules_version').notNull().default(1),
-    /** Default notification fallback priority: 1. SMS -> 2. Eitaa -> 3. Email */
+    /** Default notification fallback priority: 1. SMS -> 2. Bale -> 3. Eitaa -> 4. Email */
     channelPreference: jsonb('channel_preference')
-      .$type<Array<'SMS' | 'EITAA' | 'EMAIL' | 'IN_APP' | 'WEB_PUSH'>>()
+      .$type<Array<'SMS' | 'BALE' | 'EITAA' | 'EMAIL' | 'IN_APP' | 'WEB_PUSH'>>()
       .notNull()
-      .default(['SMS', 'EITAA', 'EMAIL']),
+      .default(['SMS', 'BALE', 'EITAA', 'EMAIL']),
     quietHoursStart: varchar('quiet_hours_start', { length: 5 }).default('22:00'),
     quietHoursEnd: varchar('quiet_hours_end', { length: 5 }).default('06:00'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -494,6 +496,7 @@ export type WorkOrderStatus = (typeof workOrderStatusEnum.enumValues)[number];
 export type WorkOrderType = (typeof workOrderTypeEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];
 export type NotificationChannel = (typeof notificationChannelEnum.enumValues)[number];
+export type NotificationStatus = (typeof notificationStatusEnum.enumValues)[number];
 
 export type Plant = InferSelectModel<typeof plants>;
 export type NewPlant = InferInsertModel<typeof plants>;
@@ -505,6 +508,7 @@ export type AssetMeter = InferSelectModel<typeof assetMeters>;
 export type PmTemplate = InferSelectModel<typeof pmTemplates>;
 export type PmSchedule = InferSelectModel<typeof pmSchedules>;
 export type WorkOrder = InferSelectModel<typeof workOrders>;
+export type DowntimeLog = InferSelectModel<typeof downtimeLogs>;
 export type Part = InferSelectModel<typeof parts>;
 export type WorkOrderPartUsage = InferSelectModel<typeof workOrderPartUsages>;
 export type Notification = InferSelectModel<typeof notifications>;
