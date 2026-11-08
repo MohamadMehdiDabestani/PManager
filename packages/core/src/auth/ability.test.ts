@@ -48,4 +48,9 @@ describe('CASL + Drizzle RBAC (TECHNICIAN & System)', () => {
     expect(sys.can('create', 'WorkOrder')).toBe(true);
     expect(sys.can('delete', 'WorkOrder')).toBe(false);
   });
+
+  it('allows technician and operator to flag unsafe condition (stop-work authority)', () => {
+    expect(a.can('flagUnsafe', subject('WorkOrder', { plantId: 'p1' } as never))).toBe(true);
+    expect(a.can('create', 'PartUsage')).toBe(true);
+  });
 });

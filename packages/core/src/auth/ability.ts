@@ -86,8 +86,9 @@ const byRole: Record<Role, (u: AuthUser, b: Builder) => void> = {
 
   SUPERVISOR: (u, { can }) => {
     const plantScope = { plantId: { $in: u.plantIds } };
-    can(['read', 'assign', 'acknowledge', 'approve'], 'WorkOrder', plantScope as never);
-    can('read', ['Asset', 'Part', 'PmSchedule'], plantScope as never);
+    can(['read', 'assign', 'acknowledge', 'execute', 'signoff', 'approve', 'flagUnsafe'], 'WorkOrder', plantScope as never);
+    can('read', ['Asset', 'Part', 'PmSchedule', 'PmTemplate'], plantScope as never);
+    can('create', 'PartUsage');
     can('export', 'Report', plantScope as never);
   },
 
