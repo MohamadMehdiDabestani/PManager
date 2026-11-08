@@ -7,6 +7,8 @@ import {
   Clock,
   Wrench,
   CalendarClock,
+  Smartphone,
+  Lock,
 } from 'lucide-react';
 import { getServerContext } from '@/lib/server-context';
 import { AppShell } from '@/components/layout/app-shell';
@@ -74,12 +76,20 @@ export default async function WorkOrdersPage() {
           </p>
         </div>
 
-        <Button asChild variant="outline">
-          <Link href="/pm-schedules">
-            <CalendarClock className="h-4 w-4 me-2" />
-            مدیریت برنامه‌های زمان‌بندی PM
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button asChild variant="secondary">
+            <Link href="/m/work-orders">
+              <Smartphone className="h-4 w-4 me-2 text-primary" />
+              پنل همراه و آفلاین تکنسین (PWA)
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/pm-schedules">
+              <CalendarClock className="h-4 w-4 me-2" />
+              مدیریت برنامه‌های زمان‌بندی PM
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* KPI Summary Cards */}
@@ -140,6 +150,7 @@ export default async function WorkOrdersPage() {
                 <TableHead>مسئول اجرا</TableHead>
                 <TableHead>چک‌لیست (Snapshot)</TableHead>
                 <TableHead>مهلت انجام (جلالی)</TableHead>
+                <TableHead className="text-left">عملیات و اجرا</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -152,7 +163,12 @@ export default async function WorkOrdersPage() {
                 return (
                   <TableRow key={wo.id}>
                     <TableCell>
-                      <div className="font-semibold">{wo.title}</div>
+                      <Link
+                        href={`/work-orders/${wo.id}`}
+                        className="font-semibold hover:text-primary transition-colors block"
+                      >
+                        {wo.title}
+                      </Link>
                       {wo.description && (
                         <div className="text-xs text-muted-foreground truncate max-w-xs">
                           {wo.description}
@@ -161,10 +177,21 @@ export default async function WorkOrdersPage() {
                     </TableCell>
 
                     <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        <Wrench className="h-3 w-3 me-1 text-primary" />
-                        {wo.type}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          <Wrench className="h-3 w-3 me-1 text-primary" />
+                          {wo.type}
+                        </Badge>
+                        {wo.requiresLoto && (
+                          <Badge
+                            variant={wo.lotoVerified ? 'success' : 'destructive'}
+                            className="text-[10px] gap-1"
+                          >
+                            <Lock className="h-2.5 w-2.5" />
+                            {wo.lotoVerified ? 'LOTO تاییدشد' : 'نیاز به LOTO'}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
 
                     <TableCell>
@@ -199,6 +226,14 @@ export default async function WorkOrdersPage() {
 
                     <TableCell className="font-mono text-xs">
                       {formatJalaliDateTime(wo.dueAt)}
+                    </TableCell>
+
+                    <TableCell className="text-left">
+                      <Button asChild size="sm" variant="secondary">
+                        <Link href={`/work-orders/${wo.id}`}>
+                          اجرا و چک‌لیست
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
