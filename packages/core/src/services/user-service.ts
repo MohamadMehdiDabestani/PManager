@@ -101,9 +101,13 @@ export async function listUsers(ctx: ServiceContext) {
       fullName: users.fullName,
       phone: users.phone,
       email: users.email,
+      baleChatId: users.baleChatId,
+      eitaaChatId: users.eitaaChatId,
       role: users.role,
       active: users.active,
       channelPreference: users.channelPreference,
+      quietHoursStart: users.quietHoursStart,
+      quietHoursEnd: users.quietHoursEnd,
       createdAt: users.createdAt,
     })
     .from(users)

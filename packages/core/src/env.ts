@@ -34,6 +34,8 @@ const EnvSchema = z.object({
   SMS_PROVIDER: z.string().default('kavenegar'),
   SMS_API_KEY: z.string().optional(),
   SMS_SENDER: z.string().optional(),
+  BALE_BOT_TOKEN: z.string().optional(),
+  BALE_API_BASE_URL: z.string().default('https://tapi.bale.ai'),
   EITAA_BOT_TOKEN: z.string().optional(),
   EITAA_API_BASE_URL: z.string().default('https://eitaayar.ir/api'),
   SMTP_HOST: z.string().optional(),
