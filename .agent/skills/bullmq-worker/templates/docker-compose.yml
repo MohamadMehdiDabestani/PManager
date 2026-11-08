@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: ${PG_PASSWORD}, POSTGRES_DB: cmms }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes: [redisdata:/data, ./redis.conf:/usr/local/etc/redis/redis.conf:ro]
+    restart: unless-stopped
+    healthcheck: { test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"], interval: 10s, retries: 5 }
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }   # next.config: output 'standalone'
+    environment: { DATABASE_URL: ${DATABASE_URL}, REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379, TZ: Asia/Tehran }
+    depends_on: [postgres, redis]
+    ports: ["443:3000"]   # terminate TLS (internal CA) via reverse proxy such as Caddy/Nginx in production
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., dockerfile: apps/worker/Dockerfile }
+    environment: { DATABASE_URL: ${DATABASE_URL}, REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379, TZ: Asia/Tehran, BOARD_USER: ${BOARD_USER}, BOARD_PASS: ${BOARD_PASS} }
+    depends_on: [postgres, redis]
+    stop_grace_period: 60s   # let active jobs finish on SIGTERM
+    restart: unless-stopped
+    # deploy.replicas: 2 is safe: schedulers are upserted, jobs are competed for
+
+volumes: { pgdata: {}, redisdata: {} }

@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: cmms-redis
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD:-changeme_redis_pass}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./infra/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme_redis_pass}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:
