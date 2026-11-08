@@ -14,6 +14,9 @@ import { logger } from './logger';
 import { processGenerateWorkOrders } from './processors/generate-work-orders';
 import { processOverdueScan } from './processors/overdue-scan';
 import { processProjectMeterDue } from './processors/project-meter-due';
+import { processSendNotification } from './processors/send-notification';
+import { processEscalation } from './processors/escalation';
+import { processOutboxSweeper } from './processors/outbox-sweeper';
 
 type Handlers = Record<string, Processor>;
 
@@ -73,10 +76,7 @@ export async function boot() {
   startWorker(
     QUEUES.NOTIFICATIONS,
     {
-      [JOBS.SEND_NOTIFICATION]: async (job) => {
-        logger.info({ jobId: job.id }, 'Running send-notification (chain: SMS -> EITAA -> EMAIL)');
-        return { ok: true };
-      },
+      [JOBS.SEND_NOTIFICATION]: processSendNotification,
     },
     { concurrency: 10, limiter: { max: 20, duration: 1_000 } },
   );
@@ -84,12 +84,17 @@ export async function boot() {
   startWorker(
     QUEUES.ESCALATION,
     {
-      [JOBS.ESCALATE]: async (job) => {
-        logger.info({ jobId: job.id }, 'Running escalation check');
-        return { ok: true };
-      },
+      [JOBS.ESCALATE]: processEscalation,
     },
     { concurrency: 5 },
+  );
+
+  startWorker(
+    QUEUES.SYSTEM_MAINTENANCE,
+    {
+      [JOBS.OUTBOX_SWEEPER]: processOutboxSweeper,
+    },
+    { concurrency: 1 },
   );
 
   await registerSchedulers();
