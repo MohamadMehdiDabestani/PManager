@@ -18,12 +18,16 @@ import {
 import {
   calculatePlantKpis,
   formatJalaliDateTime,
+  getParetoReport,
+  getQualityScorecard,
   listAccessiblePlants,
   listAssets,
   listPmSchedules,
   listWorkOrders,
   toPersianDigits,
+  type ParetoAnalysis,
   type PlantKpiReport,
+  type QualityScorecard as QualityScorecardType,
 } from '@cmms/core';
 import fa from '@/messages/fa.json';
 import { getServerContext } from '@/lib/server-context';
@@ -46,6 +50,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { KpiCharts } from '@/components/dashboard/kpi-charts';
+import { ParetoChart } from '@/components/dashboard/pareto-chart';
+import { QualityScorecard } from '@/components/dashboard/quality-scorecard';
 import { AiTroubleshootingAssistant } from '@/components/ai/ai-troubleshooting-assistant';
 
 export const dynamic = 'force-dynamic';
@@ -58,23 +64,36 @@ export default async function HomePage() {
   let scheduleList: Awaited<ReturnType<typeof listPmSchedules>> = [];
   let workOrderList: Awaited<ReturnType<typeof listWorkOrders>> = [];
   let kpiReport: PlantKpiReport | null = null;
+  let paretoReport: ParetoAnalysis | null = null;
+  let qualityScorecard: QualityScorecardType | null = null;
   let dbConnected = true;
 
   try {
-    const [assetsData, plantsData, schedulesData, workOrdersData, kpisData] =
-      await Promise.all([
-        listAssets(ctx),
-        listAccessiblePlants(ctx),
-        listPmSchedules(ctx),
-        listWorkOrders(ctx),
-        calculatePlantKpis(ctx),
-      ]);
+    const [
+      assetsData,
+      plantsData,
+      schedulesData,
+      workOrdersData,
+      kpisData,
+      paretoData,
+      scorecardData,
+    ] = await Promise.all([
+      listAssets(ctx),
+      listAccessiblePlants(ctx),
+      listPmSchedules(ctx),
+      listWorkOrders(ctx),
+      calculatePlantKpis(ctx),
+      getParetoReport(ctx),
+      getQualityScorecard(ctx),
+    ]);
 
     assetList = assetsData;
     plantList = plantsData;
     scheduleList = schedulesData;
     workOrderList = workOrdersData;
     kpiReport = kpisData;
+    paretoReport = paretoData;
+    qualityScorecard = scorecardData;
   } catch {
     dbConnected = false;
   }
@@ -215,6 +234,12 @@ export default async function HomePage() {
             plannedHours={kpiReport.downtime.plannedHours}
           />
         )}
+
+        {/* 2.5. Pareto Analysis (80/20 Dual Composed Chart) */}
+        {paretoReport && <ParetoChart pareto={paretoReport} />}
+
+        {/* 2.6. Technician Quality Scorecard (FTFR & Pencil-Whipping) */}
+        {qualityScorecard && <QualityScorecard scorecard={qualityScorecard} />}
 
         {/* 3. AI Troubleshooting Assistant */}
         <AiTroubleshootingAssistant

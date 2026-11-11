@@ -2,6 +2,15 @@
 
 import Link from 'next/link';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   AlertTriangle,
   CheckCircle2,
   Gauge,
@@ -24,6 +33,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { DowntimeCostBreakdownModal } from '@/components/financial/downtime-cost-breakdown-modal';
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+} from '@/components/ui/chart';
 
 interface KpiChartsProps {
   complianceRate: number;
@@ -34,6 +48,13 @@ interface KpiChartsProps {
   unplannedHours: number;
   plannedHours: number;
 }
+
+const complianceChartConfig = {
+  complianceRate: {
+    label: 'انطباق PM (٪)',
+    color: 'hsl(var(--primary))',
+  },
+} satisfies ChartConfig;
 
 export function KpiCharts({
   complianceRate,
@@ -55,7 +76,7 @@ export function KpiCharts({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-      {/* 1. PM Compliance Trend Chart */}
+      {/* 1. PM Compliance Trend Chart with shadcn Chart */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -69,7 +90,7 @@ export function KpiCharts({
               variant={isComplianceOnTarget ? 'default' : 'destructive'}
               className="font-mono text-xs"
             >
-              هدف: {complianceTarget}٪
+              هدف: {toPersianDigits(complianceTarget)}٪
             </Badge>
           </div>
           <CardDescription className="text-xs">
@@ -77,33 +98,88 @@ export function KpiCharts({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="h-44 flex items-end justify-between gap-3 pt-6 pb-2 border-b border-border">
-            {trends.map((bucket, idx) => {
-              const heightPct = Math.max(8, Math.min(100, bucket.complianceRate));
-              const isTargetMet = bucket.complianceRate >= complianceTarget;
+          <div className="w-full">
+            <ChartContainer config={complianceChartConfig} className="h-44 w-full aspect-auto">
+              <BarChart
+                data={trends}
+                margin={{ top: 10, right: 10, bottom: 5, left: 10 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  className="stroke-border/40"
+                />
+                <XAxis
+                  dataKey="periodLabel"
+                  tickLine={false}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tickLine={false}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                  tickFormatter={(val: number) => `${toPersianDigits(val)}٪`}
+                />
+                <ReferenceLine
+                  y={complianceTarget}
+                  stroke="hsl(var(--primary))"
+                  strokeDasharray="3 3"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `هدف: ${toPersianDigits(complianceTarget)}٪`,
+                    fill: 'hsl(var(--primary))',
+                    fontSize: 10,
+                    position: 'insideTopLeft',
+                  }}
+                />
+                <ChartTooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const bucket = payload[0]?.payload as PeriodTrendBucket;
+                    if (!bucket) return null;
 
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                  <span className="font-mono text-[11px] font-bold text-foreground">
-                    {bucket.complianceRate}٪
-                  </span>
-                  <div className="w-full max-w-[48px] bg-muted/40 rounded-t-md h-full flex items-end overflow-hidden p-0.5">
-                    <div
-                      style={{ height: `${heightPct}%` }}
-                      className={`w-full rounded-t transition-all duration-500 ${
-                        isTargetMet ? 'bg-primary' : 'bg-amber-500'
-                      }`}
+                    return (
+                      <div className="rounded-lg border border-border bg-card p-2.5 shadow-xl text-xs space-y-1">
+                        <div className="font-bold text-foreground">{bucket.periodLabel}</div>
+                        <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                          <span>انطباق نت پیشگیرانه:</span>
+                          <span className="font-bold font-mono text-primary">
+                            {toPersianDigits(bucket.complianceRate)}٪
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                          <span>انجام به‌موقع:</span>
+                          <span className="font-mono text-foreground">
+                            {toPersianDigits(bucket.completedOnTime)} از {toPersianDigits(bucket.totalPmDue)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar
+                  dataKey="complianceRate"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={44}
+                >
+                  {trends.map((entry, idx) => (
+                    <Cell
+                      key={idx}
+                      fill={
+                        entry.complianceRate >= complianceTarget
+                          ? 'hsl(var(--primary))'
+                          : '#f59e0b'
+                      }
                     />
-                  </div>
-                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                    {bucket.periodLabel}
-                  </span>
-                </div>
-              );
-            })}
+                  ))}
+                </Bar>
+              </BarChart>
+            </ChartContainer>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-primary" />
               <span>موفق (بالای ۹۰٪)</span>
@@ -113,7 +189,7 @@ export function KpiCharts({
               <span>نیاز به پیگیری (زیر ۹۰٪)</span>
             </div>
             <div className="font-bold text-foreground">
-              میانگین فعلی: {complianceRate}٪
+              میانگین فعلی: {toPersianDigits(complianceRate)}٪
             </div>
           </div>
         </CardContent>
@@ -148,78 +224,86 @@ export function KpiCharts({
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-right">تجهیز / توپولوژی خط</TableHead>
-                  <TableHead className="text-right">ساعت توقف (خواب مؤثر)</TableHead>
-                  <TableHead className="text-right">مجموع خسارت مالی (ریال)</TableHead>
-                  <TableHead className="text-left">شفافیت فرمول</TableHead>
+                  <TableHead className="text-right">مجموع توقف</TableHead>
+                  <TableHead className="text-right">خسارت مالی (ریال)</TableHead>
+                  <TableHead className="text-right">تحلیل هزینه</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {badActors.map((actor, idx) => {
                   const hours = Math.round((actor.totalDowntimeMinutes / 60) * 10) / 10;
-                  const effectiveHours =
-                    Math.round(
-                      (actor.financialBreakdown.effectiveLineDowntimeMinutes / 60) * 10,
-                    ) / 10;
+                  const effectiveHours = Math.round(
+                    ((actor.financialBreakdown?.effectiveLineDowntimeMinutes ?? actor.totalDowntimeMinutes) / 60) * 10
+                  ) / 10;
+                  const barWidth = Math.max(
+                    12,
+                    Math.round((actor.totalDowntimeMinutes / maxBadActorMinutes) * 100)
+                  );
+                  const topologyKind = (actor.topologyType || 'BOTTLENECK') as AssetTopologyKind;
+                  const topologyLabel = TOPOLOGY_LABELS_FA[topologyKind] ?? actor.topologyType;
 
                   return (
                     <TableRow key={actor.assetId}>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-muted-foreground text-[11px]">
-                            #{toPersianDigits(idx + 1)}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">
+                              #{toPersianDigits(idx + 1)}
+                            </span>
+                            <Link
+                              href={`/assets/${actor.assetId}`}
+                              className="font-medium text-xs hover:text-primary transition-colors"
+                            >
+                              {actor.assetName}
+                            </Link>
+                            <Badge
+                              variant={
+                                topologyKind === 'BOTTLENECK'
+                                  ? 'destructive'
+                                  : topologyKind === 'BUFFERED'
+                                    ? 'secondary'
+                                    : 'outline'
+                              }
+                              className="text-[10px] px-1.5 py-0"
+                            >
+                              {topologyLabel}
+                            </Badge>
+                          </div>
+                          <span className="font-mono text-[11px] text-muted-foreground block">
+                            {actor.assetCode}
                           </span>
-                          <Link
-                            href={`/assets/${actor.assetId}`}
-                            className="font-bold text-xs text-foreground hover:text-primary"
-                          >
-                            {actor.assetName}
-                          </Link>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            ({actor.assetCode})
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <span className="font-mono text-xs font-bold text-foreground">
+                            {toPersianDigits(hours)} ساعت ({toPersianDigits(actor.incidentCount)} توقف)
                           </span>
-                          <Badge
-                            variant={
-                              actor.topologyType === 'BOTTLENECK'
-                                ? 'destructive'
-                                : actor.topologyType === 'BUFFERED'
-                                  ? 'info'
-                                  : 'secondary'
-                            }
-                            className="text-[10px] px-1.5 py-0"
-                          >
-                            {TOPOLOGY_LABELS_FA[actor.topologyType]}
-                          </Badge>
+                          <span className="text-[10px] text-muted-foreground block">
+                            خواب مؤثر خط: {toPersianDigits(effectiveHours)} ساعت
+                          </span>
+                          <div className="w-24 bg-muted/50 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              style={{ width: `${barWidth}%` }}
+                              className="h-full bg-amber-500 rounded-full"
+                            />
+                          </div>
                         </div>
                       </TableCell>
-
-                      <TableCell className="text-xs">
-                        <div className="font-bold text-amber-400">
-                          {toPersianDigits(hours)} ساعت ({toPersianDigits(actor.incidentCount)} توقف)
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          خواب مؤثر خط: {toPersianDigits(effectiveHours)} ساعت
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="font-mono">
-                        <div className="text-xs font-bold text-red-400">
-                          {formatRialsFa(actor.totalFinancialLossRials)} ریال
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          معادل {formatRialsFa(Math.round(actor.totalFinancialLossRials / 10))} تومان
+                      <TableCell>
+                        <div className="space-y-0.5">
+                          <span className="font-mono text-xs font-bold text-red-400">
+                            {formatRialsFa(actor.totalFinancialLossRials)}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground block">ریال</span>
                         </div>
                       </TableCell>
-
-                      <TableCell className="text-left">
+                      <TableCell>
                         <DowntimeCostBreakdownModal
+                          breakdown={actor.financialBreakdown}
                           assetName={actor.assetName}
                           assetCode={actor.assetCode}
-                          breakdown={actor.financialBreakdown}
                           contextTitle={`تجمیع ${toPersianDigits(actor.incidentCount)} رخداد توقف در بازه گزارش`}
-                          triggerLabel="شفافیت فرمول محاسبه ضرر (ریز فاکتور)"
-                          compactTrigger
                         />
                       </TableCell>
                     </TableRow>

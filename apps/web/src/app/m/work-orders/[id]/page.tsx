@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getWorkOrderById, listParts, formatJalaliDateTime } from '@cmms/core';
+import { getWorkOrderById, listParts, listFailureCodes, formatJalaliDateTime } from '@cmms/core';
 import { ArrowRight, Cpu, Clock } from 'lucide-react';
 import { getServerContext } from '@/lib/server-context';
 import { Badge } from '@/components/ui/badge';
@@ -19,9 +19,10 @@ export default async function TechnicianMobileWorkOrderDetailPage({
   const { ctx } = await getServerContext();
   const { id } = await params;
 
-  const [wo, parts] = await Promise.all([
+  const [wo, parts, failureCodes] = await Promise.all([
     getWorkOrderById(ctx, id),
     listParts(ctx),
+    listFailureCodes(ctx),
   ]);
 
   if (!wo) {
@@ -64,7 +65,7 @@ export default async function TechnicianMobileWorkOrderDetailPage({
         </div>
       </div>
 
-      <WorkOrderExecutor workOrder={wo} parts={parts} />
+      <WorkOrderExecutor workOrder={wo} parts={parts} failureCodes={failureCodes} />
     </div>
   );
 }

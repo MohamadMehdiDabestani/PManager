@@ -13,10 +13,12 @@ import {
   AlertOctagon,
   Camera,
   AlertTriangle,
+  RotateCcw,
+  Tags,
 } from 'lucide-react';
 import { formatRialsFa } from '@cmms/core/financial-downtime';
 import type { WorkOrderWithDetails } from '@cmms/core';
-import type { Part, ChecklistResultEntry } from '@cmms/db';
+import type { Part, ChecklistResultEntry, FailureCode } from '@cmms/db';
 import { DowntimeCostBreakdownModal } from '@/components/financial/downtime-cost-breakdown-modal';
 import {
   Card,
@@ -40,15 +42,20 @@ import {
 interface WorkOrderExecutorProps {
   workOrder: WorkOrderWithDetails;
   parts: Part[];
+  failureCodes?: FailureCode[];
 }
 
-export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) {
+export function WorkOrderExecutor({ workOrder, parts, failureCodes = [] }: WorkOrderExecutorProps) {
   const router = useRouter();
 
   const [status, setStatus] = useState(workOrder.status);
   const [lotoVerified, setLotoVerified] = useState(workOrder.lotoVerified);
   const [lotoLockId, setLotoLockId] = useState(workOrder.lotoLockId ?? '');
   const [checkedLotoSteps, setCheckedLotoSteps] = useState<Record<number, boolean>>({});
+
+  const [symptomCodeId, setSymptomCodeId] = useState(workOrder.symptomCodeId ?? '');
+  const [componentCodeId, setComponentCodeId] = useState(workOrder.componentCodeId ?? '');
+  const [rootCauseCodeId, setRootCauseCodeId] = useState(workOrder.rootCauseCodeId ?? '');
 
   // Build map of checklist answers
   const [answers, setAnswers] = useState<Record<string, ChecklistResultEntry>>(() => {
@@ -254,12 +261,26 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
       }
     }
 
+    // Enforce 3-tier failure coding for corrective/emergency (CM) work orders
+    if (workOrder.type === 'CM') {
+      if (!symptomCodeId || !componentCodeId || !rootCauseCodeId) {
+        setFeedback({
+          type: 'error',
+          text: 'برای بستن دستورکار اضطراری/اصلاحی، ثبت ۳ مؤلفه استاندارد علل خرابی (نشانه ظاهری، قطعه معیوب و علت ریشه‌ای) الزامی است.',
+        });
+        return;
+      }
+    }
+
     setStatus('DONE');
     await dispatchAction(
       'COMPLETE_WO',
       {
         checklistResult: Object.values(answers),
         completionNote,
+        symptomCodeId: symptomCodeId || undefined,
+        componentCodeId: componentCodeId || undefined,
+        rootCauseCodeId: rootCauseCodeId || undefined,
       },
       'دستورکار با موفقیت تکمیل، قفل و در سابقه ممیزی ثبت گردید.',
     );
@@ -290,6 +311,40 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
         >
           {feedback.text}
         </div>
+      )}
+
+      {/* هشدار بازرسی صوری (Pencil-Whipping Alert) */}
+      {workOrder.isSuspiciousInspection && (
+        <Card className="border-red-500/60 bg-red-500/10">
+          <CardContent className="pt-4 pb-4 flex items-center gap-3 text-red-300">
+            <AlertOctagon className="h-5 w-5 text-red-400 shrink-0" />
+            <div className="space-y-0.5 text-xs">
+              <span className="font-bold block text-sm">
+                ⚠️ هشدار سیستم کنترل کیفیت: بازرسی صوری (Pencil-Whipping)
+              </span>
+              <span>
+                {workOrder.suspicionReasonFa ?? 'مدت زمان بازرسی یا مقادیر ثبت‌شده خارج از الگوی طبیعی کارخانه‌ای است.'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* هشدار تکرار خرابی (Rework Alert) */}
+      {workOrder.isRework && (
+        <Card className="border-amber-500/60 bg-amber-500/10">
+          <CardContent className="pt-4 pb-4 flex items-center gap-3 text-amber-300">
+            <RotateCcw className="h-5 w-5 text-amber-400 shrink-0" />
+            <div className="space-y-0.5 text-xs">
+              <span className="font-bold block text-sm">
+                🔄 تکرار خرابی کمتر از ۷۲ ساعت (تعمیر ناموفق بار اول - Rework)
+              </span>
+              <span>
+                روی همین تجهیز و همین قطعه، کمتر از ۷۲ ساعت پس از این دستورکار، خرابی اضطراری مجددی گزارش شده است.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* 1. PPE Safety Banner */}
@@ -791,6 +846,99 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
           </CardContent>
         </Card>
       </div>
+
+      {/* 5.5. سیستم کدگذاری ۳ لایه‌ای علل خرابی (ISO 14224) */}
+      <Card className={workOrder.type === 'CM' ? 'border-primary/40 bg-card' : 'border-border bg-card'}>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Tags className="h-5 w-5 text-primary" />
+              کدگذاری استاندارد علل خرابی (۳ لایه ISO 14224)
+            </CardTitle>
+            {workOrder.type === 'CM' ? (
+              <Badge variant="destructive" className="text-xs">
+                الزامی برای دستورکارهای اضطراری (CM)
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs">
+                اختیاری برای نت پیشگیرانه
+              </Badge>
+            )}
+          </div>
+          <CardDescription className="text-xs">
+            برای رسم نمودار پارتو علل ریشه‌ای (۸۰/۲۰) و محاسبه نرخ تعمیر بار اول (FTFR)، نشانه ظاهری، قطعه معیوب و علت ریشه‌ای را مشخص کنید.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* ۱. نشانه ظاهری خرابی */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                ۱. نشانه ظاهری (Symptom) {workOrder.type === 'CM' && <span className="text-red-400">*</span>}
+              </Label>
+              <select
+                disabled={isLockedDone}
+                value={symptomCodeId}
+                onChange={(e) => setSymptomCodeId(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs"
+              >
+                <option value="">-- انتخاب نشانه ظاهری --</option>
+                {failureCodes
+                  .filter((c) => c.category === 'SYMPTOM')
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titleFa} ({c.code})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* ۲. قطعه و زیرمجموعه معیوب */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                ۲. قطعه / زیرمجموعه معیوب (Component) {workOrder.type === 'CM' && <span className="text-red-400">*</span>}
+              </Label>
+              <select
+                disabled={isLockedDone}
+                value={componentCodeId}
+                onChange={(e) => setComponentCodeId(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs"
+              >
+                <option value="">-- انتخاب قطعه معیوب --</option>
+                {failureCodes
+                  .filter((c) => c.category === 'COMPONENT')
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titleFa} ({c.code})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* ۳. علت ریشه‌ای خرابی */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">
+                ۳. علت ریشه‌ای (Root Cause) {workOrder.type === 'CM' && <span className="text-red-400">*</span>}
+              </Label>
+              <select
+                disabled={isLockedDone}
+                value={rootCauseCodeId}
+                onChange={(e) => setRootCauseCodeId(e.target.value)}
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-xs"
+              >
+                <option value="">-- انتخاب علت ریشه‌ای --</option>
+                {failureCodes
+                  .filter((c) => c.category === 'ROOT_CAUSE')
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titleFa} ({c.code})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 6. Industrial Action Bar (56px Glove-Friendly Touch Targets) */}
       {!isLockedDone ? (

@@ -4,6 +4,7 @@ import {
   formatJalaliDateTime,
   formatRialsFa,
   getWorkOrderById,
+  listFailureCodes,
   listParts,
   TOPOLOGY_LABELS_FA,
   toPersianDigits,
@@ -29,9 +30,10 @@ export default async function WorkOrderDetailPage({
   const { ctx, sessionUser } = await getServerContext();
   const { id } = await params;
 
-  const [wo, parts] = await Promise.all([
+  const [wo, parts, failureCodes] = await Promise.all([
     getWorkOrderById(ctx, id),
     listParts(ctx),
+    listFailureCodes(ctx),
   ]);
 
   if (!wo) {
@@ -127,7 +129,7 @@ export default async function WorkOrderDetailPage({
         </CardContent>
       </Card>
 
-      <WorkOrderExecutor workOrder={wo} parts={parts} />
+      <WorkOrderExecutor workOrder={wo} parts={parts} failureCodes={failureCodes} />
     </AppShell>
   );
 }

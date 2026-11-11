@@ -107,6 +107,15 @@ export async function POST(req: NextRequest) {
               completionNote: action.payload['completionNote']
                 ? String(action.payload['completionNote'])
                 : undefined,
+              symptomCodeId: action.payload['symptomCodeId']
+                ? String(action.payload['symptomCodeId'])
+                : undefined,
+              componentCodeId: action.payload['componentCodeId']
+                ? String(action.payload['componentCodeId'])
+                : undefined,
+              rootCauseCodeId: action.payload['rootCauseCodeId']
+                ? String(action.payload['rootCauseCodeId'])
+                : undefined,
               clientId: action.clientId,
             });
             try {
