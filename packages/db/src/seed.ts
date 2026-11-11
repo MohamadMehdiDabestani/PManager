@@ -14,6 +14,8 @@ import {
   pmTemplates,
   pmSchedules,
   workOrders,
+  workOrderPartUsages,
+  downtimeLogs,
   notifications,
 } from './schema/index';
 
@@ -36,11 +38,36 @@ async function seed() {
   try {
     console.log('🌱 شروع بارگذاری داده‌های اولیه کارخانه (Seed)...');
 
-    // ارتقای افزایشی اسکیمای کانال بله (Bale Bot) بدون از دست رفتن داده‌ها
+    // ارتقای افزایشی اسکیمای کانال بله (Bale Bot) و موتور مالی توقفات (فاز ۶) بدون از دست رفتن داده‌ها
     await pool.query(`ALTER TYPE "public"."notification_channel" ADD VALUE IF NOT EXISTS 'BALE';`);
     await pool.query(
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bale_chat_id" varchar(64);`,
     );
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."asset_topology_type" AS ENUM ('BOTTLENECK', 'BUFFERED', 'PARALLEL');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await pool.query(`
+      ALTER TABLE "assets"
+        ADD COLUMN IF NOT EXISTS "topology_type" "public"."asset_topology_type" NOT NULL DEFAULT 'BOTTLENECK',
+        ADD COLUMN IF NOT EXISTS "buffer_capacity_minutes" integer NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "capacity_impact_percent" integer NOT NULL DEFAULT 100,
+        ADD COLUMN IF NOT EXISTS "hourly_lost_margin_rials" bigint NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "cold_startup_threshold_minutes" integer NOT NULL DEFAULT 120,
+        ADD COLUMN IF NOT EXISTS "restart_energy_and_setup_cost_rials" bigint NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS "in_line_scrap_cost_rials" bigint NOT NULL DEFAULT 0;
+    `);
+    await pool.query(`
+      ALTER TABLE "work_orders"
+        ADD COLUMN IF NOT EXISTS "labor_hourly_rate_rials" bigint NOT NULL DEFAULT 2000000;
+    `);
+    await pool.query(`
+      ALTER TABLE "parts"
+        ADD COLUMN IF NOT EXISTS "unit_price_rials" bigint NOT NULL DEFAULT 0;
+    `);
 
     // ۱. ایجاد کارخانه اصلی
     const [mainPlant] = await db
@@ -168,16 +195,81 @@ async function seed() {
       }
     }
 
-    // ۴. ایجاد درخت تجهیزات (Assets) به همراه رویه ایمنی LOTO و توکن QR
+    // ۴. ایجاد درخت تجهیزات (Assets) با پارامترهای اقتصادی صنایع فرآیند پیوسته (کاشی/سرامیک و گندله‌سازی)
     const assetSeeds = [
       {
+        code: 'KLN-RLR-01',
+        name: 'کوره رولری پخت سریع کاشی و نوار پخت گندله (خط ۱)',
+        locationId: assemblyLine.id,
+        serialNumber: 'SACMI-FMS-2950',
+        qrOpaqueToken: 'ast_kln_rlr_01_demo_token',
+        status: 'OPERATIONAL' as const,
+        criticality: 'CRITICAL' as const,
+        topologyType: 'BOTTLENECK' as const,
+        bufferCapacityMinutes: 0,
+        capacityImpactPercent: 100,
+        hourlyLostMarginRials: 150_000_000, // ۱۵۰ میلیون ریال در ساعت
+        coldStartupThresholdMinutes: 120, // ۲ ساعت آستانه سرد شدن کوره
+        restartEnergyAndSetupCostRials: 500_000_000, // ۵۰۰ میلیون ریال هزینه پیش‌گرم و راه‌اندازی مجدد
+        inLineScrapCostRials: 180_000_000, // ۱۸۰ میلیون ریال ضایعات بار داخل کوره در توقف ناگهانی
+        requiresLoto: true,
+        lotoProcedure: [
+          {
+            stepNumber: 1,
+            energySource: 'گاز طبیعی فشار قوی کلکتور مشعل‌های زون پخت',
+            isolationPoint: 'شیر قطع اضطراری گاز اصلی GV-01 و قفل مکانیکی اهرم',
+            verificationMethod: 'مشاهده فشار صفر روی گیج کلکتور و تایید سیستم BMS',
+          },
+          {
+            stepNumber: 2,
+            energySource: 'تغذیه برق سه فاز درایو رولرها و فن‌های سیرکولاسیون',
+            isolationPoint: 'کلید اصلی تابلو MCC-KILN-01 - نصب قفل پدلاک نسوز',
+            verificationMethod: 'تست عدم چرخش درایو از پنل محلی و بررسی بی‌برقی با مولتی‌متر',
+          },
+        ],
+        meter: { name: 'ساعت کارکرد حرارتی کوره', unit: 'ساعت', currentReading: 18420 },
+      },
+      {
+        code: 'BML-SLR-01',
+        name: 'بالمیل مرطوب و اتمایزر تهیه دوغاب (دارای سیلوهای بافر)',
+        locationId: pressHall.id,
+        serialNumber: 'SACMI-MMC-180',
+        qrOpaqueToken: 'ast_bml_slr_01_demo_token',
+        status: 'OPERATIONAL' as const,
+        criticality: 'HIGH' as const,
+        topologyType: 'BUFFERED' as const,
+        bufferCapacityMinutes: 180, // ۱۸۰ دقیقه (۳ ساعت) ذخیره سیلوهای دوغاب و گرانول
+        capacityImpactPercent: 100,
+        hourlyLostMarginRials: 150_000_000, // ۱۵۰ میلیون ریال در ساعت پس از اتمام بافر
+        coldStartupThresholdMinutes: 360,
+        restartEnergyAndSetupCostRials: 45_000_000, // ۴۵ میلیون ریال هزینه پیش‌گرم مشعل اتمایزر
+        inLineScrapCostRials: 30_000_000, // ۳۰ میلیون ریال ضایعات دوغاب تهویه نشده
+        requiresLoto: true,
+        lotoProcedure: [
+          {
+            stepNumber: 1,
+            energySource: 'الکتروموتور ۴۰۰ کیلووات درایو اصلی بالمیل و اینورتر',
+            isolationPoint: 'کلید قدرت Q-BM1 در تابلو پست برق سالن آماده‌سازی',
+            verificationMethod: 'تخلیه بانک خازنی اینورتر و نصب پین قفل مکانیکی درام بالمیل',
+          },
+        ],
+        meter: { name: 'ساعت چرخش درام بالمیل', unit: 'ساعت', currentReading: 9640 },
+      },
+      {
         code: 'PRS-HYD-250',
-        name: 'پرس هیدرولیک ۲۵۰ تن اشمرال',
+        name: 'پرس هیدرولیک شکل‌دهی کاشی ۲۵۰ تن اشمرال (موازی A)',
         locationId: pressHall.id,
         serialNumber: 'SCH-250-99412',
         qrOpaqueToken: 'ast_prs_hyd_250_demo_token',
         status: 'OPERATIONAL' as const,
         criticality: 'CRITICAL' as const,
+        topologyType: 'PARALLEL' as const,
+        bufferCapacityMinutes: 30, // ۳۰ دقیقه ذخیره درایر عمودی
+        capacityImpactPercent: 50, // ۵۰٪ افت ظرفیت به دلیل وجود پرس موازی B
+        hourlyLostMarginRials: 150_000_000,
+        coldStartupThresholdMinutes: 180,
+        restartEnergyAndSetupCostRials: 60_000_000, // ۶۰ میلیون ریال پیش‌گرم قالب و تنظیم سنبه
+        inLineScrapCostRials: 40_000_000, // ۴۰ میلیون ریال بیسکوئیت خام ضایعاتی
         requiresLoto: true,
         lotoProcedure: [
           {
@@ -197,12 +289,19 @@ async function seed() {
       },
       {
         code: 'CMP-ATL-01',
-        name: 'کمپرسور اسکرو اطلس کوپکو GA75',
+        name: 'کمپرسور اسکرو اطلس کوپکو GA75 (هوای ابزار دقیق)',
         locationId: utilityRoom.id,
         serialNumber: 'ATC-GA75-8821',
         qrOpaqueToken: 'ast_cmp_atl_01_demo_token',
         status: 'OPERATIONAL' as const,
         criticality: 'HIGH' as const,
+        topologyType: 'BUFFERED' as const,
+        bufferCapacityMinutes: 45, // ۴۵ دقیقه ذخیره مخازن هوای فشرده
+        capacityImpactPercent: 100,
+        hourlyLostMarginRials: 120_000_000,
+        coldStartupThresholdMinutes: 240,
+        restartEnergyAndSetupCostRials: 25_000_000,
+        inLineScrapCostRials: 50_000_000,
         requiresLoto: true,
         lotoProcedure: [
           {
@@ -222,12 +321,19 @@ async function seed() {
       },
       {
         code: 'CNV-ASM-02',
-        name: 'نوار نقاله زنجیری خط مونتاژ ۱',
+        name: 'نوار نقاله زنجیری تغذیه کوره و خط لعاب ۱',
         locationId: assemblyLine.id,
         serialNumber: 'CNV-1402-09',
         qrOpaqueToken: 'ast_cnv_asm_02_demo_token',
         status: 'UNDER_MAINTENANCE' as const,
         criticality: 'MEDIUM' as const,
+        topologyType: 'BOTTLENECK' as const,
+        bufferCapacityMinutes: 0,
+        capacityImpactPercent: 100,
+        hourlyLostMarginRials: 150_000_000,
+        coldStartupThresholdMinutes: 120,
+        restartEnergyAndSetupCostRials: 500_000_000,
+        inLineScrapCostRials: 140_000_000,
         requiresLoto: false,
         lotoProcedure: [],
         meter: { name: 'ساعت کارکرد گیربکس', unit: 'ساعت', currentReading: 2150 },
@@ -247,6 +353,13 @@ async function seed() {
           qrOpaqueToken: a.qrOpaqueToken,
           status: a.status,
           criticality: a.criticality,
+          topologyType: a.topologyType,
+          bufferCapacityMinutes: a.bufferCapacityMinutes,
+          capacityImpactPercent: a.capacityImpactPercent,
+          hourlyLostMarginRials: a.hourlyLostMarginRials,
+          coldStartupThresholdMinutes: a.coldStartupThresholdMinutes,
+          restartEnergyAndSetupCostRials: a.restartEnergyAndSetupCostRials,
+          inLineScrapCostRials: a.inLineScrapCostRials,
           requiresLoto: a.requiresLoto,
           lotoProcedure: a.lotoProcedure,
         })
@@ -254,8 +367,16 @@ async function seed() {
           target: [assets.plantId, assets.code],
           set: {
             name: a.name,
+            nameNormalized: a.name,
             status: a.status,
             criticality: a.criticality,
+            topologyType: a.topologyType,
+            bufferCapacityMinutes: a.bufferCapacityMinutes,
+            capacityImpactPercent: a.capacityImpactPercent,
+            hourlyLostMarginRials: a.hourlyLostMarginRials,
+            coldStartupThresholdMinutes: a.coldStartupThresholdMinutes,
+            restartEnergyAndSetupCostRials: a.restartEnergyAndSetupCostRials,
+            inLineScrapCostRials: a.inLineScrapCostRials,
             requiresLoto: a.requiresLoto,
             lotoProcedure: a.lotoProcedure,
           },
@@ -279,11 +400,40 @@ async function seed() {
       }
     }
 
-    // ۵. ایجاد قطعات یدکی پایه
+    // ۵. ایجاد قطعات یدکی پایه به همراه قیمت واحد ریالی (unitPriceRials)
     const partSeeds = [
-      { code: 'PRT-FLT-HYD01', name: 'فیلتر برگشت هیدرولیک ۲۵ میکرون', unit: 'عدد', quantityOnHand: 14, minQuantity: 5 },
-      { code: 'PRT-OIL-VG68', name: 'روغن هیدرولیک بهران هیدرولیک ۶۸', unit: 'لیتر', quantityOnHand: 220, minQuantity: 100 },
-      { code: 'PRT-BRG-6208', name: 'بلبرینگ SKF 6208-2RS', unit: 'عدد', quantityOnHand: 3, minQuantity: 6 },
+      {
+        code: 'PRT-FLT-HYD01',
+        name: 'فیلتر برگشت هیدرولیک ۲۵ میکرون',
+        unit: 'عدد',
+        quantityOnHand: 14,
+        minQuantity: 5,
+        unitPriceRials: 18_500_000,
+      },
+      {
+        code: 'PRT-OIL-VG68',
+        name: 'روغن هیدرولیک بهران هیدرولیک ۶۸',
+        unit: 'لیتر',
+        quantityOnHand: 220,
+        minQuantity: 100,
+        unitPriceRials: 1_450_000,
+      },
+      {
+        code: 'PRT-BRG-6208',
+        name: 'بلبرینگ نسوز SKF 6208-2RS کوره',
+        unit: 'عدد',
+        quantityOnHand: 8,
+        minQuantity: 6,
+        unitPriceRials: 12_000_000,
+      },
+      {
+        code: 'PRT-RLR-CER01',
+        name: 'غلتک سرامیکی نسوز کوره رولری آلما',
+        unit: 'عدد',
+        quantityOnHand: 24,
+        minQuantity: 10,
+        unitPriceRials: 28_000_000,
+      },
     ];
 
     for (const p of partSeeds) {
@@ -297,8 +447,15 @@ async function seed() {
           unit: p.unit,
           quantityOnHand: p.quantityOnHand,
           minQuantity: p.minQuantity,
+          unitPriceRials: p.unitPriceRials,
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [parts.plantId, parts.code],
+          set: {
+            name: p.name,
+            unitPriceRials: p.unitPriceRials,
+          },
+        });
     }
 
     // ۶. ایجاد قالب‌های چک‌لیست نت (PM Templates) و برنامه‌های زمان‌بندی (PM Schedules)
@@ -311,11 +468,11 @@ async function seed() {
       const [pressAsset] = await db
         .select()
         .from(assets)
-        .where(eq(assets.code, 'PRS-HYD-01'));
+        .where(eq(assets.code, 'PRS-HYD-250'));
       const [compAsset] = await db
         .select()
         .from(assets)
-        .where(eq(assets.code, 'CMP-AIR-01'));
+        .where(eq(assets.code, 'CMP-ATL-01'));
       const [convAsset] = await db
         .select()
         .from(assets)
@@ -535,6 +692,129 @@ async function seed() {
               checklistSnapshot: tplConv.checklist,
             })
             .onConflictDoNothing();
+        }
+      }
+    }
+
+    // ۶.۵. ثبت دستورکارها، مصرف قطعات و توقفات نمونه فرآیند پیوسته (کوره رولری و بالمیل) جهت تحلیل مالی فاز ۶
+    const [kilnAsset] = await db.select().from(assets).where(eq(assets.code, 'KLN-RLR-01'));
+    const [ballMillAsset] = await db.select().from(assets).where(eq(assets.code, 'BML-SLR-01'));
+    const [pressAssetForDt] = await db.select().from(assets).where(eq(assets.code, 'PRS-HYD-250'));
+    const [techForDt] = await db.select().from(users).where(eq(users.username, 'tech1'));
+    const [ceramicRollerPart] = await db
+      .select()
+      .from(parts)
+      .where(eq(parts.code, 'PRT-RLR-CER01'));
+    const [bearingPart] = await db.select().from(parts).where(eq(parts.code, 'PRT-BRG-6208'));
+
+    if (kilnAsset && ballMillAsset) {
+      const nowTs = Date.now();
+      const [kilnWo] = await db
+        .insert(workOrders)
+        .values({
+          plantId: mainPlant.id,
+          assetId: kilnAsset.id,
+          type: 'CM',
+          status: 'DONE',
+          priority: 'URGENT',
+          title: 'شکستگی غلتک سرامیکی و گیرپاژ زون پخت کوره رولری ۱',
+          description:
+            'توقف اضطراری کوره به علت شکست غلتک در دمای ۱۱۸۰ درجه، تخلیه ضایعات کاشی و پیش‌گرم مجدد کوره',
+          assigneeId: techForDt?.id ?? null,
+          laborHourlyRateRials: 2_500_000,
+          dueAt: new Date(nowTs - 2 * 86_400_000),
+          startedAt: new Date(nowTs - 2 * 86_400_000 - 180 * 60_000),
+          completedAt: new Date(nowTs - 2 * 86_400_000),
+          lotoVerified: true,
+          lotoLockId: 'LOCK-KILN-09',
+          clientId: 'seed-wo-kiln-cm-01',
+        })
+        .onConflictDoNothing({ target: workOrders.clientId })
+        .returning();
+
+      const [ballMillWo] = await db
+        .insert(workOrders)
+        .values({
+          plantId: mainPlant.id,
+          assetId: ballMillAsset.id,
+          type: 'PM',
+          status: 'DONE',
+          priority: 'HIGH',
+          title: 'سرویس برنامه‌ریزی‌شده لاینینگ و تعویض بلبرینگ بالمیل دوغاب',
+          description:
+            'توقف با برنامه ۲۴۰ دقیقه‌ای بالمیل؛ ۱۸۰ دقیقه اول از محل ذخیره سیلوهای دوغاب تامین شد و خط اصلی فقط ۶۰ دقیقه توقف داشت.',
+          assigneeId: techForDt?.id ?? null,
+          laborHourlyRateRials: 2_000_000,
+          dueAt: new Date(nowTs - 4 * 86_400_000),
+          startedAt: new Date(nowTs - 4 * 86_400_000 - 240 * 60_000),
+          completedAt: new Date(nowTs - 4 * 86_400_000),
+          lotoVerified: true,
+          lotoLockId: 'LOCK-BML-02',
+          clientId: 'seed-wo-ballmill-pm-01',
+        })
+        .onConflictDoNothing({ target: workOrders.clientId })
+        .returning();
+
+      if (kilnWo && ceramicRollerPart) {
+        await db
+          .insert(workOrderPartUsages)
+          .values({
+            workOrderId: kilnWo.id,
+            partId: ceramicRollerPart.id,
+            quantityUsed: 2,
+            recordedById: techForDt?.id ?? null,
+            clientId: 'seed-usage-kiln-roller-1',
+          })
+          .onConflictDoNothing({ target: workOrderPartUsages.clientId });
+
+        await db.insert(downtimeLogs).values({
+          plantId: mainPlant.id,
+          assetId: kilnAsset.id,
+          workOrderId: kilnWo.id,
+          startedAt: new Date(nowTs - 2 * 86_400_000 - 180 * 60_000),
+          endedAt: new Date(nowTs - 2 * 86_400_000),
+          reason: 'شکست غلتک سرامیکی زون پخت و افت دمای کوره بیش از آستانه ۱۲۰ دقیقه',
+          isPlanned: false,
+        });
+      }
+
+      if (ballMillWo && bearingPart) {
+        await db
+          .insert(workOrderPartUsages)
+          .values({
+            workOrderId: ballMillWo.id,
+            partId: bearingPart.id,
+            quantityUsed: 2,
+            recordedById: techForDt?.id ?? null,
+            clientId: 'seed-usage-ballmill-brg-1',
+          })
+          .onConflictDoNothing({ target: workOrderPartUsages.clientId });
+
+        await db.insert(downtimeLogs).values({
+          plantId: mainPlant.id,
+          assetId: ballMillAsset.id,
+          workOrderId: ballMillWo.id,
+          startedAt: new Date(nowTs - 4 * 86_400_000 - 240 * 60_000),
+          endedAt: new Date(nowTs - 4 * 86_400_000),
+          reason: 'سرویس دوره‌ای بالمیل (پوشش ۱۸۰ دقیقه اول توسط سیلوهای بافر دوغاب)',
+          isPlanned: true,
+        });
+      }
+
+      if (pressAssetForDt) {
+        const existingPressDt = await db
+          .select()
+          .from(downtimeLogs)
+          .where(eq(downtimeLogs.assetId, pressAssetForDt.id));
+        if (existingPressDt.length === 0) {
+          await db.insert(downtimeLogs).values({
+            plantId: mainPlant.id,
+            assetId: pressAssetForDt.id,
+            startedAt: new Date(nowTs - 6 * 86_400_000 - 90 * 60_000),
+            endedAt: new Date(nowTs - 6 * 86_400_000),
+            reason: 'نشتی شیر پروپورشنال پرس موازی A (ادامه تولید با ۵۰٪ ظرفیت خط)',
+            isPlanned: false,
+          });
         }
       }
     }

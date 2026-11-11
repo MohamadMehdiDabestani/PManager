@@ -15,6 +15,13 @@
       "when": 1794137966799,
       "tag": "0001_amused_marvel_apes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794314876509,
+      "tag": "0002_organic_mandroid",
+      "breakpoints": true
     }
   ]
 }

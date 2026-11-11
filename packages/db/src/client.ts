@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import pg from 'pg';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from './schema/index';
@@ -9,7 +11,27 @@ export type DbClient = NodePgDatabase<typeof schema>;
 let globalPool: DbPool | undefined;
 let globalDb: DbClient | undefined;
 
+function ensureEnvLoaded(): void {
+  if (process.env['DATABASE_URL']) return;
+  let dir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const envPath = resolve(dir, '.env');
+    if (existsSync(envPath) && typeof process.loadEnvFile === 'function') {
+      try {
+        process.loadEnvFile(envPath);
+        break;
+      } catch {
+        // ignore
+      }
+    }
+    const parent = resolve(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+}
+
 export function createDbConnection(connectionString?: string): { pool: DbPool; db: DbClient } {
+  ensureEnvLoaded();
   const url = connectionString ?? process.env['DATABASE_URL'];
   if (!url) {
     throw new Error('DATABASE_URL is not configured');

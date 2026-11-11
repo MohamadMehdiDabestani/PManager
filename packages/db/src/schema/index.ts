@@ -6,6 +6,7 @@ import {
   text,
   boolean,
   integer,
+  bigint,
   doublePrecision,
   timestamp,
   jsonb,
@@ -42,6 +43,12 @@ export const assetCriticalityEnum = pgEnum('asset_criticality', [
   'HIGH',
   'MEDIUM',
   'LOW',
+]);
+
+export const assetTopologyTypeEnum = pgEnum('asset_topology_type', [
+  'BOTTLENECK',
+  'BUFFERED',
+  'PARALLEL',
 ]);
 
 export const scheduleTriggerTypeEnum = pgEnum('schedule_trigger_type', [
@@ -199,6 +206,23 @@ export const assets = pgTable(
     qrOpaqueToken: varchar('qr_opaque_token', { length: 64 }).notNull().unique(),
     status: assetStatusEnum('status').notNull().default('OPERATIONAL'),
     criticality: assetCriticalityEnum('criticality').notNull().default('MEDIUM'),
+    topologyType: assetTopologyTypeEnum('topology_type').notNull().default('BOTTLENECK'),
+    bufferCapacityMinutes: integer('buffer_capacity_minutes').notNull().default(0),
+    capacityImpactPercent: integer('capacity_impact_percent').notNull().default(100),
+    hourlyLostMarginRials: bigint('hourly_lost_margin_rials', { mode: 'number' })
+      .notNull()
+      .default(0),
+    coldStartupThresholdMinutes: integer('cold_startup_threshold_minutes')
+      .notNull()
+      .default(120),
+    restartEnergyAndSetupCostRials: bigint('restart_energy_and_setup_cost_rials', {
+      mode: 'number',
+    })
+      .notNull()
+      .default(0),
+    inLineScrapCostRials: bigint('in_line_scrap_cost_rials', { mode: 'number' })
+      .notNull()
+      .default(0),
     requiresLoto: boolean('requires_loto').notNull().default(false),
     lotoProcedure: jsonb('loto_procedure').$type<LotoStepDefinition[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -350,6 +374,9 @@ export const workOrders = pgTable(
     lotoVerified: boolean('loto_verified').notNull().default(false),
     lotoLockId: varchar('loto_lock_id', { length: 64 }),
     lotoVerifiedById: uuid('loto_verified_by_id').references(() => users.id, { onDelete: 'set null' }),
+    laborHourlyRateRials: bigint('labor_hourly_rate_rials', { mode: 'number' })
+      .notNull()
+      .default(2000000),
     checklistSnapshot: jsonb('checklist_snapshot')
       .$type<ChecklistItemDefinition[]>()
       .notNull()
@@ -408,11 +435,14 @@ export const parts = pgTable(
     unit: varchar('unit', { length: 32 }).notNull().default('عدد'),
     quantityOnHand: doublePrecision('quantity_on_hand').notNull().default(0),
     minQuantity: doublePrecision('min_quantity').notNull().default(0),
+    unitPriceRials: bigint('unit_price_rials', { mode: 'number' }).notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [uniqueIndex('parts_plant_code_uniq').on(t.plantId, t.code)],
 );
+
+export const spareParts = parts;
 
 export const workOrderPartUsages = pgTable(
   'work_order_part_usages',
@@ -492,6 +522,8 @@ export const auditLogs = pgTable(
 
 export type Role = (typeof roleEnum.enumValues)[number];
 export type AssetStatus = (typeof assetStatusEnum.enumValues)[number];
+export type AssetCriticality = (typeof assetCriticalityEnum.enumValues)[number];
+export type AssetTopologyType = (typeof assetTopologyTypeEnum.enumValues)[number];
 export type WorkOrderStatus = (typeof workOrderStatusEnum.enumValues)[number];
 export type WorkOrderType = (typeof workOrderTypeEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];
