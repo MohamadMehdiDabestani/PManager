@@ -124,7 +124,7 @@ export default async function NotificationsPage() {
               <span>۱. پیامک سازمانی</span>
               <MessageSquare className="h-4 w-4 text-amber-400" />
             </CardDescription>
-            <CardTitle className="text-base">SMS Gateway</CardTitle>
+            <CardTitle className="text-base">SMS.ir Gateway</CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground flex items-center justify-between">
             <span>ارسال‌شده: {smsSentCount.toLocaleString('fa-IR')}</span>

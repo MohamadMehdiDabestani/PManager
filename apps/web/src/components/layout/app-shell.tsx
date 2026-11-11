@@ -29,6 +29,7 @@ interface AppShellProps {
     | 'pm-schedules'
     | 'work-orders'
     | 'notifications'
+    | 'audit-logs'
     | 'organization'
     | 'scan';
   user?: {
@@ -45,6 +46,7 @@ export function AppShell({ children, activeNav = 'dashboard', user }: AppShellPr
     { key: 'pm-schedules', href: '/pm-schedules', label: fa.nav.pmSchedules, icon: CalendarClock },
     { key: 'pm-templates', href: '/pm-templates', label: fa.nav.pmTemplates, icon: ClipboardCheck },
     { key: 'notifications', href: '/notifications', label: fa.nav.notifications, icon: Bell },
+    { key: 'audit-logs', href: '/audit-logs', label: fa.nav.auditLogs, icon: ShieldCheck },
     { key: 'assets', href: '/assets', label: fa.nav.assets, icon: Cpu },
     { key: 'organization', href: '/organization', label: fa.nav.organization, icon: Building2 },
     { key: 'mobile-wo', href: '/m/work-orders', label: 'پنل همراه تکنسین (PWA)', icon: Wrench },

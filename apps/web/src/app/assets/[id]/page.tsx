@@ -9,8 +9,10 @@ import {
   Wrench,
 } from 'lucide-react';
 import {
+  formatRialsFa,
   getAssetById,
   listRecentMeterReadings,
+  TOPOLOGY_LABELS_FA,
   toPersianDigits,
 } from '@cmms/core';
 import fa from '@/messages/fa.json';
@@ -111,6 +113,26 @@ export default async function AssetDetailPage({ params }: AssetDetailPageProps) 
             <div className="rounded-lg bg-muted/40 p-3.5">
               <span className="text-muted-foreground block text-xs">سالن / محل استقرار</span>
               <span className="font-semibold text-base mt-1 block">{asset.locationName}</span>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-3.5">
+              <span className="text-muted-foreground block text-xs">توپولوژی خط و بافر میانی</span>
+              <span className="font-semibold text-sm mt-1 block">
+                {TOPOLOGY_LABELS_FA[asset.topologyType ?? 'BOTTLENECK']} (بافر:{' '}
+                {toPersianDigits(asset.bufferCapacityMinutes ?? 0)} دقیقه | اثر ظرفیت:{' '}
+                {toPersianDigits(asset.capacityImpactPercent ?? 100)}٪)
+              </span>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-3.5">
+              <span className="text-muted-foreground block text-xs">
+                پارامترهای اقتصادی سه‌جزئی توقف (ریال)
+              </span>
+              <span className="font-mono font-semibold text-xs mt-1 block text-amber-300">
+                سود ساعتی: {formatRialsFa(asset.hourlyLostMarginRials ?? 0)} | ضایعات خط:{' '}
+                {formatRialsFa(asset.inLineScrapCostRials ?? 0)} | جریمه سرد شدن (
+                {'>'}
+                {toPersianDigits(asset.coldStartupThresholdMinutes ?? 120)} دقیقه):{' '}
+                {formatRialsFa(asset.restartEnergyAndSetupCostRials ?? 0)} ریال
+              </span>
             </div>
           </CardContent>
         </Card>

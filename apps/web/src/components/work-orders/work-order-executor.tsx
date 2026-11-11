@@ -14,8 +14,10 @@ import {
   Camera,
   AlertTriangle,
 } from 'lucide-react';
+import { formatRialsFa } from '@cmms/core/financial-downtime';
 import type { WorkOrderWithDetails } from '@cmms/core';
 import type { Part, ChecklistResultEntry } from '@cmms/db';
+import { DowntimeCostBreakdownModal } from '@/components/financial/downtime-cost-breakdown-modal';
 import {
   Card,
   CardContent,
@@ -618,7 +620,7 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
                     {parts.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name} ({p.code}) — موجودی: {p.quantityOnHand.toLocaleString('fa-IR')}{' '}
-                        {p.unit}
+                        {p.unit} — قیمت واحد: {formatRialsFa(p.unitPriceRials ?? 0)} ریال
                       </option>
                     ))}
                   </select>
@@ -666,9 +668,14 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
                     <span>
                       {u.partName} (<span className="font-mono">{u.partCode}</span>)
                     </span>
-                    <Badge variant="info">
-                      {u.quantityUsed.toLocaleString('fa-IR')} {u.unit}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-amber-300">
+                        {formatRialsFa(Math.round(u.quantityUsed * (u.unitPriceRials ?? 0)))} ریال
+                      </span>
+                      <Badge variant="info">
+                        {u.quantityUsed.toLocaleString('fa-IR')} {u.unit}
+                      </Badge>
+                    </div>
                   </div>
                 ))
               )}
@@ -765,6 +772,21 @@ export function WorkOrderExecutor({ workOrder, parts }: WorkOrderExecutorProps) 
                   );
                 })
               )}
+            </div>
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border/60">
+              <div className="text-xs">
+                <span className="text-muted-foreground">مجموع خسارت مالی این دستورکار: </span>
+                <span className="font-mono font-bold text-red-400">
+                  {formatRialsFa(workOrder.financialImpact.totalLossRials)} ریال
+                </span>
+              </div>
+              <DowntimeCostBreakdownModal
+                assetName={workOrder.assetName}
+                assetCode={workOrder.assetCode}
+                breakdown={workOrder.financialImpact}
+                contextTitle={`دستورکار: ${workOrder.title}`}
+                compactTrigger
+              />
             </div>
           </CardContent>
         </Card>

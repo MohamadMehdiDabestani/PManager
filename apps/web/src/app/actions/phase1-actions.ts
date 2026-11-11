@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import {
   createAsset,
+  updateAsset,
   createLocation,
   createUser,
   recordMeterReading,
@@ -50,6 +51,30 @@ export async function createAssetAction(formData: FormData) {
     | 'HIGH'
     | 'MEDIUM'
     | 'LOW';
+  const topologyType = String(formData.get('topologyType') ?? 'BOTTLENECK') as
+    | 'BOTTLENECK'
+    | 'BUFFERED'
+    | 'PARALLEL';
+  const bufferCapacityMinutes = Number(
+    normalizeDigits(String(formData.get('bufferCapacityMinutes') ?? '0')),
+  );
+  const capacityImpactPercent = Number(
+    normalizeDigits(
+      String(formData.get('capacityImpactPercent') ?? (topologyType === 'PARALLEL' ? '50' : '100')),
+    ),
+  );
+  const hourlyLostMarginRials = Number(
+    normalizeDigits(String(formData.get('hourlyLostMarginRials') ?? '0')),
+  );
+  const coldStartupThresholdMinutes = Number(
+    normalizeDigits(String(formData.get('coldStartupThresholdMinutes') ?? '120')),
+  );
+  const restartEnergyAndSetupCostRials = Number(
+    normalizeDigits(String(formData.get('restartEnergyAndSetupCostRials') ?? '0')),
+  );
+  const inLineScrapCostRials = Number(
+    normalizeDigits(String(formData.get('inLineScrapCostRials') ?? '0')),
+  );
   const requiresLoto = formData.get('requiresLoto') === 'on';
   const lotoEnergySource = String(formData.get('lotoEnergySource') ?? '').trim();
   const lotoIsolationPoint = String(formData.get('lotoIsolationPoint') ?? '').trim();
@@ -67,6 +92,17 @@ export async function createAssetAction(formData: FormData) {
     serialNumber,
     status: 'OPERATIONAL',
     criticality,
+    topologyType,
+    bufferCapacityMinutes: Number.isNaN(bufferCapacityMinutes) ? 0 : bufferCapacityMinutes,
+    capacityImpactPercent: Number.isNaN(capacityImpactPercent) ? 100 : capacityImpactPercent,
+    hourlyLostMarginRials: Number.isNaN(hourlyLostMarginRials) ? 0 : hourlyLostMarginRials,
+    coldStartupThresholdMinutes: Number.isNaN(coldStartupThresholdMinutes)
+      ? 120
+      : coldStartupThresholdMinutes,
+    restartEnergyAndSetupCostRials: Number.isNaN(restartEnergyAndSetupCostRials)
+      ? 0
+      : restartEnergyAndSetupCostRials,
+    inLineScrapCostRials: Number.isNaN(inLineScrapCostRials) ? 0 : inLineScrapCostRials,
     requiresLoto,
     lotoProcedure:
       requiresLoto && lotoEnergySource
@@ -89,6 +125,62 @@ export async function createAssetAction(formData: FormData) {
   });
 
   revalidatePath('/assets');
+  revalidatePath('/');
+}
+
+export async function updateAssetAction(formData: FormData) {
+  const { ctx } = await getServerContext();
+
+  const assetId = String(formData.get('assetId') ?? '');
+  const name = String(formData.get('name') ?? '').trim() || undefined;
+  const criticality = (String(formData.get('criticality') ?? '') || undefined) as
+    | 'CRITICAL'
+    | 'HIGH'
+    | 'MEDIUM'
+    | 'LOW'
+    | undefined;
+  const topologyType = String(formData.get('topologyType') ?? 'BOTTLENECK') as
+    | 'BOTTLENECK'
+    | 'BUFFERED'
+    | 'PARALLEL';
+  const bufferCapacityMinutes = Number(
+    normalizeDigits(String(formData.get('bufferCapacityMinutes') ?? '0')),
+  );
+  const capacityImpactPercent = Number(
+    normalizeDigits(String(formData.get('capacityImpactPercent') ?? '100')),
+  );
+  const hourlyLostMarginRials = Number(
+    normalizeDigits(String(formData.get('hourlyLostMarginRials') ?? '0')),
+  );
+  const coldStartupThresholdMinutes = Number(
+    normalizeDigits(String(formData.get('coldStartupThresholdMinutes') ?? '120')),
+  );
+  const restartEnergyAndSetupCostRials = Number(
+    normalizeDigits(String(formData.get('restartEnergyAndSetupCostRials') ?? '0')),
+  );
+  const inLineScrapCostRials = Number(
+    normalizeDigits(String(formData.get('inLineScrapCostRials') ?? '0')),
+  );
+
+  await updateAsset(ctx, {
+    assetId,
+    name,
+    criticality,
+    topologyType,
+    bufferCapacityMinutes: Number.isNaN(bufferCapacityMinutes) ? 0 : bufferCapacityMinutes,
+    capacityImpactPercent: Number.isNaN(capacityImpactPercent) ? 100 : capacityImpactPercent,
+    hourlyLostMarginRials: Number.isNaN(hourlyLostMarginRials) ? 0 : hourlyLostMarginRials,
+    coldStartupThresholdMinutes: Number.isNaN(coldStartupThresholdMinutes)
+      ? 120
+      : coldStartupThresholdMinutes,
+    restartEnergyAndSetupCostRials: Number.isNaN(restartEnergyAndSetupCostRials)
+      ? 0
+      : restartEnergyAndSetupCostRials,
+    inLineScrapCostRials: Number.isNaN(inLineScrapCostRials) ? 0 : inLineScrapCostRials,
+  });
+
+  revalidatePath('/assets');
+  revalidatePath(`/assets/${assetId}`);
   revalidatePath('/');
 }
 
