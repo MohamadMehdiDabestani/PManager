@@ -30,6 +30,13 @@ export const CreateAssetSchema = z.object({
   serialNumber: z.string().max(100).optional(),
   status: z.enum(['OPERATIONAL', 'UNDER_MAINTENANCE', 'DOWN', 'DECOMMISSIONED']).default('OPERATIONAL'),
   criticality: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).default('MEDIUM'),
+  topologyType: z.enum(['BOTTLENECK', 'BUFFERED', 'PARALLEL']).default('BOTTLENECK'),
+  bufferCapacityMinutes: z.number().int().min(0).default(0),
+  capacityImpactPercent: z.number().int().min(0).max(100).default(100),
+  hourlyLostMarginRials: z.number().min(0).default(0),
+  coldStartupThresholdMinutes: z.number().int().min(0).default(120),
+  restartEnergyAndSetupCostRials: z.number().min(0).default(0),
+  inLineScrapCostRials: z.number().min(0).default(0),
   requiresLoto: z.boolean().default(false),
   lotoProcedure: z.array(LotoStepSchema).default([]),
   initialMeter: z
@@ -39,6 +46,19 @@ export const CreateAssetSchema = z.object({
       currentReading: z.number().min(0).default(0),
     })
     .optional(),
+});
+
+export const UpdateAssetSchema = z.object({
+  assetId: z.string().uuid(),
+  name: z.string().min(2).max(200).optional(),
+  criticality: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional(),
+  topologyType: z.enum(['BOTTLENECK', 'BUFFERED', 'PARALLEL']),
+  bufferCapacityMinutes: z.number().int().min(0).default(0),
+  capacityImpactPercent: z.number().int().min(0).max(100).default(100),
+  hourlyLostMarginRials: z.number().min(0).default(0),
+  coldStartupThresholdMinutes: z.number().int().min(0).default(120),
+  restartEnergyAndSetupCostRials: z.number().min(0).default(0),
+  inLineScrapCostRials: z.number().min(0).default(0),
 });
 
 export const RecordMeterReadingSchema = z.object({
@@ -175,6 +195,13 @@ export async function createAsset(
         qrOpaqueToken: generateOpaqueQrToken(),
         status: input.status,
         criticality: input.criticality,
+        topologyType: input.topologyType,
+        bufferCapacityMinutes: input.bufferCapacityMinutes,
+        capacityImpactPercent: input.capacityImpactPercent,
+        hourlyLostMarginRials: Math.round(input.hourlyLostMarginRials),
+        coldStartupThresholdMinutes: input.coldStartupThresholdMinutes,
+        restartEnergyAndSetupCostRials: Math.round(input.restartEnergyAndSetupCostRials),
+        inLineScrapCostRials: Math.round(input.inLineScrapCostRials),
         requiresLoto: input.requiresLoto,
         lotoProcedure: input.lotoProcedure,
       })
@@ -202,6 +229,8 @@ export async function createAsset(
           code: created.code,
           name: created.name,
           criticality: created.criticality,
+          topologyType: created.topologyType,
+          hourlyLostMarginRials: created.hourlyLostMarginRials,
           requiresLoto: created.requiresLoto,
         },
       },
@@ -209,6 +238,77 @@ export async function createAsset(
 
     return created;
   });
+}
+
+export async function updateAsset(
+  ctx: ServiceContext,
+  rawInput: z.infer<typeof UpdateAssetSchema>,
+) {
+  const input = UpdateAssetSchema.parse(rawInput);
+
+  const [existing] = await ctx.db
+    .select()
+    .from(assets)
+    .where(and(eq(assets.id, input.assetId), isNull(assets.deletedAt)))
+    .limit(1);
+
+  if (!existing) {
+    throw new Error('تجهیز مورد نظر یافت نشد');
+  }
+
+  assertCan(ctx.ability, 'update', 'Asset', existing as unknown as Record<string, unknown>);
+
+  const nextName = input.name ? input.name.trim() : existing.name;
+  const nextNameNormalized = input.name ? normalizePersianText(input.name) : existing.nameNormalized;
+
+  const [updated] = await ctx.db
+    .update(assets)
+    .set({
+      name: nextName,
+      nameNormalized: nextNameNormalized,
+      criticality: input.criticality ?? existing.criticality,
+      topologyType: input.topologyType,
+      bufferCapacityMinutes: input.bufferCapacityMinutes,
+      capacityImpactPercent: input.capacityImpactPercent,
+      hourlyLostMarginRials: Math.round(input.hourlyLostMarginRials),
+      coldStartupThresholdMinutes: input.coldStartupThresholdMinutes,
+      restartEnergyAndSetupCostRials: Math.round(input.restartEnergyAndSetupCostRials),
+      inLineScrapCostRials: Math.round(input.inLineScrapCostRials),
+      updatedAt: ctx.now(),
+    })
+    .where(eq(assets.id, existing.id))
+    .returning();
+
+  if (!updated) {
+    throw new Error('خطا در به‌روزرسانی پارامترهای تجهیز');
+  }
+
+  await writeAuditLog(ctx, {
+    plantId: existing.plantId,
+    action: 'ASSET_UPDATED',
+    entity: 'Asset',
+    entityId: existing.id,
+    before: {
+      topologyType: existing.topologyType,
+      bufferCapacityMinutes: existing.bufferCapacityMinutes,
+      capacityImpactPercent: existing.capacityImpactPercent,
+      hourlyLostMarginRials: existing.hourlyLostMarginRials,
+      coldStartupThresholdMinutes: existing.coldStartupThresholdMinutes,
+      restartEnergyAndSetupCostRials: existing.restartEnergyAndSetupCostRials,
+      inLineScrapCostRials: existing.inLineScrapCostRials,
+    },
+    after: {
+      topologyType: updated.topologyType,
+      bufferCapacityMinutes: updated.bufferCapacityMinutes,
+      capacityImpactPercent: updated.capacityImpactPercent,
+      hourlyLostMarginRials: updated.hourlyLostMarginRials,
+      coldStartupThresholdMinutes: updated.coldStartupThresholdMinutes,
+      restartEnergyAndSetupCostRials: updated.restartEnergyAndSetupCostRials,
+      inLineScrapCostRials: updated.inLineScrapCostRials,
+    },
+  });
+
+  return updated;
 }
 
 export async function recordMeterReading(

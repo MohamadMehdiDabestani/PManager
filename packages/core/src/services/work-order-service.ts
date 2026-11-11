@@ -20,10 +20,22 @@ import type { ServiceContext } from '../context';
 import { writeAuditLog } from './audit-service';
 import { advanceNextDueOnCompletion } from '../domain/pm-schedule';
 import { getMeterState } from './pm-schedule-service';
+import {
+  calculateDowntimeFinancialImpact,
+  type AssetTopologyKind,
+  type DowntimeCostBreakdown,
+} from '../financial-downtime';
 
 export type WorkOrderWithDetails = WorkOrder & {
   assetName: string;
   assetCode: string;
+  topologyType: AssetTopologyKind;
+  bufferCapacityMinutes: number;
+  capacityImpactPercent: number;
+  hourlyLostMarginRials: number;
+  coldStartupThresholdMinutes: number;
+  restartEnergyAndSetupCostRials: number;
+  inLineScrapCostRials: number;
   requiresLoto: boolean;
   lotoProcedure: LotoStepDefinition[];
   assigneeName?: string | null;
@@ -34,10 +46,12 @@ export type WorkOrderWithDetails = WorkOrder & {
     partCode: string;
     partName: string;
     unit: string;
+    unitPriceRials: number;
     quantityUsed: number;
     createdAt: Date;
   }>;
   downtimes: DowntimeLog[];
+  financialImpact: DowntimeCostBreakdown;
 };
 
 export const verifyLotoSchema = z.object({
@@ -148,6 +162,13 @@ export async function getWorkOrderById(
       order: workOrders,
       assetName: assets.name,
       assetCode: assets.code,
+      topologyType: assets.topologyType,
+      bufferCapacityMinutes: assets.bufferCapacityMinutes,
+      capacityImpactPercent: assets.capacityImpactPercent,
+      hourlyLostMarginRials: assets.hourlyLostMarginRials,
+      coldStartupThresholdMinutes: assets.coldStartupThresholdMinutes,
+      restartEnergyAndSetupCostRials: assets.restartEnergyAndSetupCostRials,
+      inLineScrapCostRials: assets.inLineScrapCostRials,
       requiresLoto: assets.requiresLoto,
       lotoProcedure: assets.lotoProcedure,
       assigneeName: users.fullName,
@@ -184,6 +205,7 @@ export async function getWorkOrderById(
       partCode: parts.code,
       partName: parts.name,
       unit: parts.unit,
+      unitPriceRials: parts.unitPriceRials,
       quantityUsed: workOrderPartUsages.quantityUsed,
       createdAt: workOrderPartUsages.createdAt,
     })
@@ -198,16 +220,85 @@ export async function getWorkOrderById(
     .where(eq(downtimeLogs.workOrderId, id))
     .orderBy(desc(downtimeLogs.startedAt));
 
+  const now = ctx.now();
+  let totalDowntimeMinutes = 0;
+  let hasUnplannedDowntime = false;
+
+  for (const dt of downtimes) {
+    const end = dt.endedAt ?? now;
+    const mins = Math.max(0, Math.round((end.getTime() - dt.startedAt.getTime()) / 60_000));
+    totalDowntimeMinutes += mins;
+    if (!dt.isPlanned) {
+      hasUnplannedDowntime = true;
+    }
+  }
+
+  if (downtimes.length === 0 && row.order.startedAt && row.order.completedAt) {
+    totalDowntimeMinutes = Math.max(
+      0,
+      Math.round((row.order.completedAt.getTime() - row.order.startedAt.getTime()) / 60_000),
+    );
+  }
+
+  const stoppageType =
+    downtimes.length > 0
+      ? hasUnplannedDowntime
+        ? 'UNPLANNED'
+        : 'PLANNED'
+      : row.order.type === 'CM'
+        ? 'UNPLANNED'
+        : 'PLANNED';
+
+  const sparePartsCostRials = usageRows.reduce(
+    (sum, u) => sum + Math.round(u.quantityUsed * (u.unitPriceRials ?? 0)),
+    0,
+  );
+
+  const technicianLaborHours =
+    row.order.startedAt && row.order.completedAt
+      ? Math.max(0.5, (row.order.completedAt.getTime() - row.order.startedAt.getTime()) / 3_600_000)
+      : totalDowntimeMinutes > 0
+        ? totalDowntimeMinutes / 60
+        : 1;
+
+  const financialImpact = calculateDowntimeFinancialImpact({
+    asset: {
+      id: row.order.assetId,
+      code: row.assetCode,
+      name: row.assetName,
+      topologyType: row.topologyType,
+      bufferCapacityMinutes: row.bufferCapacityMinutes,
+      capacityImpactPercent: row.capacityImpactPercent,
+      hourlyLostMarginRials: row.hourlyLostMarginRials,
+      coldStartupThresholdMinutes: row.coldStartupThresholdMinutes,
+      restartEnergyAndSetupCostRials: row.restartEnergyAndSetupCostRials,
+      inLineScrapCostRials: row.inLineScrapCostRials,
+    },
+    durationMinutes: totalDowntimeMinutes,
+    stoppageType,
+    sparePartsCostRials,
+    technicianLaborHours,
+    laborHourlyRateRials: row.order.laborHourlyRateRials ?? 2_000_000,
+  });
+
   return {
     ...row.order,
     assetName: row.assetName,
     assetCode: row.assetCode,
+    topologyType: row.topologyType,
+    bufferCapacityMinutes: row.bufferCapacityMinutes,
+    capacityImpactPercent: row.capacityImpactPercent,
+    hourlyLostMarginRials: row.hourlyLostMarginRials,
+    coldStartupThresholdMinutes: row.coldStartupThresholdMinutes,
+    restartEnergyAndSetupCostRials: row.restartEnergyAndSetupCostRials,
+    inLineScrapCostRials: row.inLineScrapCostRials,
     requiresLoto: row.requiresLoto,
     lotoProcedure: row.lotoProcedure,
     assigneeName: row.assigneeName,
     requiredPpe,
     partUsages: usageRows,
     downtimes,
+    financialImpact,
   };
 }
 

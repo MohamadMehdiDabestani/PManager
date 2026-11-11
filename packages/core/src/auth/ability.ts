@@ -66,7 +66,7 @@ const byRole: Record<Role, (u: AuthUser, b: Builder) => void> = {
 
   PLANT_HEAD: (u, { can }) => {
     const plantScope = { plantId: { $in: u.plantIds } };
-    can('read', ['Asset', 'WorkOrder', 'PmSchedule', 'Part'], plantScope as never);
+    can('read', ['Asset', 'WorkOrder', 'PmSchedule', 'Part', 'AuditLog'], plantScope as never);
     can(['approve', 'export'], ['WorkOrder', 'Report'], plantScope as never);
   },
 
@@ -74,7 +74,7 @@ const byRole: Record<Role, (u: AuthUser, b: Builder) => void> = {
     const plantScope = { plantId: { $in: u.plantIds } };
     can('manage', ['Asset', 'PmSchedule', 'PmTemplate', 'Part', 'WorkOrder'], plantScope as never);
     can(['approve', 'adjustStock', 'export', 'reopen'], ['WorkOrder', 'Part', 'Report'], plantScope as never);
-    can('read', 'User', plantScope as never);
+    can('read', ['User', 'AuditLog'], plantScope as never);
   },
 
   PLANNER: (u, { can }) => {

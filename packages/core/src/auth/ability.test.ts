@@ -53,4 +53,11 @@ describe('CASL + Drizzle RBAC (TECHNICIAN & System)', () => {
     expect(a.can('flagUnsafe', subject('WorkOrder', { plantId: 'p1' } as never))).toBe(true);
     expect(a.can('create', 'PartUsage')).toBe(true);
   });
+
+  it('allows manager and auditor to read AuditLog, but strictly forbids updating or deleting', () => {
+    const mgr = defineAbilityFor({ id: 'm1', role: 'MAINTENANCE_MANAGER', plantIds: ['p1'], rulesVersion: 1 });
+    expect(mgr.can('read', 'AuditLog')).toBe(true);
+    expect(mgr.can('update', 'AuditLog')).toBe(false);
+    expect(mgr.can('delete', 'AuditLog')).toBe(false);
+  });
 });
