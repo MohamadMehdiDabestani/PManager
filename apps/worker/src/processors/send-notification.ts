@@ -41,6 +41,13 @@ export async function processSendNotification(job: Job, token?: string) {
       return { skipped: 'no-recipient' };
     }
 
+    const [recipientUser] = await db
+      .select({ channelPreference: users.channelPreference })
+      .from(users)
+      .where(eq(users.id, recipientId))
+      .limit(1);
+
+    const preferredChannel = recipientUser?.channelPreference?.[0] ?? 'SMS';
     const offsetMin = data.reminderOffsetMin ?? 0;
     const idempotencyKey = `rem-ntf-${wo.id}-${offsetMin}`;
 
@@ -51,7 +58,7 @@ export async function processSendNotification(job: Job, token?: string) {
         workOrderId: wo.id,
         kind: 'WO_REMINDER',
         priority: offsetMin >= 0 ? 'HIGH' : 'MEDIUM',
-        channel: 'BALE',
+        channel: preferredChannel,
         status: 'PENDING',
         title: `یادآوری دستورکار: ${wo.title}`,
         body:
@@ -96,7 +103,7 @@ export async function processSendNotification(job: Job, token?: string) {
       channel: res.deliveredChannel,
       attempted: res.attemptedChannels,
     },
-    'Notification processed (chain: SMS -> BALE -> EITAA -> EMAIL -> IN_APP)',
+    'Notification processed (chain: SMS (SMS.ir) -> BALE -> EITAA -> EMAIL -> IN_APP)',
   );
 
   return res;

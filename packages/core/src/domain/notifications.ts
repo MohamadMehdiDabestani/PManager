@@ -105,21 +105,175 @@ export function computeQuietHoursDelayMs(
 }
 
 // ============================================================================
-// Channel Adapters (SMS, Bale Bot, Eitaa Bot, Email SMTP, In-App SSE, Web Push)
+// Channel Adapters (SMS.ir, Bale Bot, Eitaa Bot, Email SMTP, In-App SSE, Web Push)
 // ============================================================================
+
+/**
+ * Normalizes Iranian mobile phone numbers to standard 11-digit format starting with '09'.
+ * Handles: '+989123456789', '00989123456789', '989123456789', '09123456789', '9123456789'.
+ */
+export function normalizeIranianMobile(phone: string): string {
+  const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+  if (!/^(\+98|0098|98|0)?9\d{9}$/.test(cleaned)) {
+    throw new PermanentChannelError(`شماره موبایل نامعتبر است: ${phone}`);
+  }
+  const digits = cleaned.replace(/^(\+98|0098|98)/, '');
+  return digits.startsWith('0') ? digits : `0${digits}`;
+}
+
+/**
+ * Sends SMS via SMS.ir v1 REST API.
+ * Documentation: https://app.sms.ir/developer/help/sandbox
+ * Standard POST: https://api.sms.ir/v1/send/likeToLike (Headers: X-API-KEY, Content-Type: application/json)
+ * Optional GET:  https://api.sms.ir/v1/send?... (if SMS_SEND_METHOD === 'GET')
+ */
+export async function sendSmsIr(
+  phone: string,
+  smsText: string,
+  apiKey: string,
+  idempotencyKey: string,
+): Promise<ChannelDeliveryResult> {
+  const baseUrl = (process.env['SMS_API_BASE_URL'] ?? 'https://api.sms.ir').replace(/\/$/, '');
+  const lineEnv = process.env['SMS_LINE_NUMBER'] ?? process.env['SMS_SENDER'] ?? '300000000000';
+  const lineNumber = /^\d+$/.test(lineEnv) ? Number(lineEnv) : lineEnv;
+  const method = (process.env['SMS_SEND_METHOD'] ?? 'POST').toUpperCase();
+
+  if (method === 'GET') {
+    const username = process.env['SMS_USERNAME'] ?? '';
+    const params = new URLSearchParams({
+      username,
+      password: apiKey,
+      mobile: phone,
+      line: String(lineNumber),
+      text: smsText,
+    });
+    const url = `${baseUrl}/v1/send?${params.toString()}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'text/plain' },
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 422) {
+      const errText = await res.text().catch(() => '');
+      throw new PermanentChannelError(`خطای درگاه پیامک SMS.ir (${res.status}): ${errText}`);
+    }
+    if (!res.ok) {
+      throw new Error(`خطای موقت درگاه پیامک SMS.ir (${res.status})`);
+    }
+
+    return {
+      providerMessageId: `smsir-get-${Date.now()}`,
+      simulated: false,
+    };
+  }
+
+  // Modern v1 POST likeToLike with X-API-KEY header
+  const url = `${baseUrl}/v1/send/likeToLike`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/plain',
+      'X-API-KEY': apiKey,
+    },
+    body: JSON.stringify({
+      lineNumber,
+      messageTexts: [smsText],
+      mobiles: [phone],
+      senddatetime: null,
+    }),
+    signal: AbortSignal.timeout(8_000),
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    const errText = await res.text().catch(() => '');
+    throw new PermanentChannelError(`خطای احراز هویت درگاه SMS.ir (${res.status}): ${errText}`);
+  }
+  if (res.status === 400 || res.status === 422) {
+    const errText = await res.text().catch(() => '');
+    throw new PermanentChannelError(`خطای اعتبارسنجی درگاه SMS.ir (${res.status}): ${errText}`);
+  }
+  if (!res.ok) {
+    throw new Error(`خطای موقت ارتباط با درگاه پیامک SMS.ir (${res.status})`);
+  }
+
+  const rawText = await res.text().catch(() => '');
+  let json: {
+    status?: number;
+    message?: string;
+    data?: { packId?: string; messageIds?: (string | number)[] };
+  } | null = null;
+  try {
+    json = JSON.parse(rawText);
+  } catch {
+    // If not JSON
+  }
+
+  if (json && typeof json.status === 'number' && json.status !== 1) {
+    const message = json.message ?? 'خطای ناشناخته از درگاه SMS.ir';
+    if (/شماره|خط|مسدود|نامعتبر|اعتبار/i.test(message)) {
+      throw new PermanentChannelError(`خطای درگاه SMS.ir: ${message}`);
+    }
+    throw new Error(`خطای موقت درگاه SMS.ir: ${message}`);
+  }
+
+  const messageId = json?.data?.messageIds?.[0] ?? json?.data?.packId ?? `smsir-${Date.now()}`;
+
+  return {
+    providerMessageId: String(messageId),
+    simulated: false,
+  };
+}
+
+/**
+ * Fallback sender for Kavenegar if SMS_PROVIDER=kavenegar
+ */
+export async function sendKavenegar(
+  phone: string,
+  smsText: string,
+  apiKey: string,
+): Promise<ChannelDeliveryResult> {
+  const sender = process.env['SMS_SENDER'] ?? '10008663';
+  const url = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/send.json`;
+  const body = new URLSearchParams({
+    receptor: phone,
+    sender,
+    message: smsText,
+  });
+
+  const res = await fetch(url, {
+    method: 'POST',
+    body,
+    signal: AbortSignal.timeout(8_000),
+  });
+
+  if (res.status === 400 || res.status === 422) {
+    throw new PermanentChannelError(`خطای دائمی درگاه پیامک کاوه‌نگار (${res.status})`);
+  }
+  if (!res.ok) {
+    throw new Error(`خطای موقت درگاه پیامک کاوه‌نگار (${res.status})`);
+  }
+
+  return {
+    providerMessageId: `kavenegar-live-${Date.now()}`,
+    simulated: false,
+  };
+}
 
 export const SmsAdapter: ChannelAdapter = {
   name: 'SMS',
-  labelFa: 'پیامک سازمانی (SMS)',
+  labelFa: 'پیامک سازمانی (SMS.ir)',
   canReach(user) {
     return Boolean(user.active && user.phone && user.phone.trim().length >= 10);
   },
   async send(msg) {
-    const phone = msg.to.phone?.trim();
-    if (!phone || !/^(\+98|0)?9\d{9}$/.test(phone)) {
-      throw new PermanentChannelError(`شماره موبایل نامعتبر است: ${phone ?? 'خالی'}`);
+    const rawPhone = msg.to.phone?.trim();
+    if (!rawPhone) {
+      throw new PermanentChannelError('شماره موبایل کاربر خالی است');
     }
 
+    const phone = normalizeIranianMobile(rawPhone);
     const smsText = formatConcisePersianSms(msg.title, msg.body, msg.link);
     const apiKey = process.env['SMS_API_KEY'];
 
@@ -130,31 +284,12 @@ export const SmsAdapter: ChannelAdapter = {
       };
     }
 
-    const sender = process.env['SMS_SENDER'] ?? '10008663';
-    const url = `https://api.kavenegar.com/v1/${encodeURIComponent(apiKey)}/sms/send.json`;
-    const body = new URLSearchParams({
-      receptor: phone,
-      sender,
-      message: smsText,
-    });
-
-    const res = await fetch(url, {
-      method: 'POST',
-      body,
-      signal: AbortSignal.timeout(8_000),
-    });
-
-    if (res.status === 400 || res.status === 422) {
-      throw new PermanentChannelError(`خطای دائمی درگاه پیامک (${res.status})`);
-    }
-    if (!res.ok) {
-      throw new Error(`خطای موقت درگاه پیامک (${res.status})`);
+    const provider = (process.env['SMS_PROVIDER'] ?? 'smsir').toLowerCase();
+    if (provider === 'kavenegar') {
+      return sendKavenegar(phone, smsText, apiKey);
     }
 
-    return {
-      providerMessageId: `sms-live-${Date.now()}`,
-      simulated: false,
-    };
+    return sendSmsIr(phone, smsText, apiKey, msg.idempotencyKey);
   },
   isPermanent(err) {
     return err instanceof PermanentChannelError;

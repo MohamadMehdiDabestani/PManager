@@ -116,7 +116,6 @@ export async function deliverNotificationById(
     .innerJoin(users, eq(notifications.userId, users.id))
     .where(eq(notifications.id, notificationId))
     .limit(1);
-
   if (!row) {
     return { status: 'SKIPPED', reason: 'not-found' };
   }
@@ -215,7 +214,6 @@ export async function createAndSendNotification(
   const input = sendTestNotificationSchema.parse(rawInput);
   const idempotencyKey =
     rawInput.idempotencyKey ?? `ntf-${input.userId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-
   const [inserted] = await ctx.db
     .insert(notifications)
     .values({
@@ -317,7 +315,7 @@ export async function executeWorkOrderEscalationLevel(
   for (const recipient of targetUsers) {
     const idempotencyKey = `esc-${wo.id}-L${level}-${recipient.id}`;
     const preferredChannel: NotificationChannel =
-      level === 3 ? 'SMS' : (recipient.channelPreference?.[0] ?? 'BALE');
+      level === 3 ? 'SMS' : (recipient.channelPreference?.[0] ?? 'SMS');
 
     const [inserted] = await db
       .insert(notifications)
