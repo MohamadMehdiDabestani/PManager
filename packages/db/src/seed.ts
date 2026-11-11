@@ -16,6 +16,7 @@ import {
   workOrders,
   workOrderPartUsages,
   downtimeLogs,
+  failureCodes,
   notifications,
 } from './schema/index';
 
@@ -67,6 +68,41 @@ async function seed() {
     await pool.query(`
       ALTER TABLE "parts"
         ADD COLUMN IF NOT EXISTS "unit_price_rials" bigint NOT NULL DEFAULT 0;
+    `);
+
+    // ارتقای ساختار کاتالوگ علل خرابی ISO 14224 و کنترل کیفیت بازرسی (گام ۲ فاز ۶)
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."failure_code_category" AS ENUM ('SYMPTOM', 'COMPONENT', 'ROOT_CAUSE');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await pool.query(`
+      DO $$ BEGIN
+        CREATE TYPE "public"."failure_industry_type" AS ENUM ('TILE', 'PELLETIZING', 'GENERAL');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "failure_codes" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        "code" varchar(32) NOT NULL UNIQUE,
+        "category" "public"."failure_code_category" NOT NULL,
+        "title_fa" varchar(200) NOT NULL,
+        "industry_type" "public"."failure_industry_type" NOT NULL DEFAULT 'GENERAL',
+        "created_at" timestamp with time zone NOT NULL DEFAULT now()
+      );
+    `);
+    await pool.query(`
+      ALTER TABLE "work_orders"
+        ADD COLUMN IF NOT EXISTS "symptom_code_id" uuid REFERENCES "failure_codes"("id") ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS "component_code_id" uuid REFERENCES "failure_codes"("id") ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS "root_cause_code_id" uuid REFERENCES "failure_codes"("id") ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS "is_suspicious_inspection" boolean NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "suspicion_reason_fa" text,
+        ADD COLUMN IF NOT EXISTS "is_rework" boolean NOT NULL DEFAULT false;
     `);
 
     // ۱. ایجاد کارخانه اصلی
@@ -458,6 +494,50 @@ async function seed() {
         });
     }
 
+    // ۵.۵. ایجاد کاتالوگ استاندارد علل خرابی (Failure Codes - ISO 14224 ویژه کاشی و گندله)
+    const failureCodeSeeds = [
+      // نشانه‌های ظاهری (SYMPTOM)
+      { code: 'SYM-VIBRATION', category: 'SYMPTOM' as const, titleFa: 'ارتعاش غیرمجاز و لرزش شدید', industryType: 'GENERAL' as const },
+      { code: 'SYM-OVERHEAT', category: 'SYMPTOM' as const, titleFa: 'افزایش دمای موضعی و داغ شدن یاتاقان/موتور', industryType: 'GENERAL' as const },
+      { code: 'SYM-EROSION', category: 'SYMPTOM' as const, titleFa: 'سایش و خوردگی شدید سطوح درگیر', industryType: 'GENERAL' as const },
+      { code: 'SYM-CLOGGING', category: 'SYMPTOM' as const, titleFa: 'گرفتگی مسیر دوغاب، اسپری درایر و نازل', industryType: 'TILE' as const },
+      { code: 'SYM-PRESSURE-DROP', category: 'SYMPTOM' as const, titleFa: 'افت فشار هیدرولیک یا مدار هوای فشرده', industryType: 'GENERAL' as const },
+      { code: 'SYM-TEAR', category: 'SYMPTOM' as const, titleFa: 'پارگی و بریدگی نوار نقاله و تسمه', industryType: 'PELLETIZING' as const },
+
+      // زیرمجموعه‌ها و قطعات معیوب (COMPONENT)
+      { code: 'CMP-CERAMIC-ROLLER', category: 'COMPONENT' as const, titleFa: 'رولر سرامیکی کوره رولری', industryType: 'TILE' as const },
+      { code: 'CMP-DIE-STAMP', category: 'COMPONENT' as const, titleFa: 'قالب و استمپ پرس هیدرولیک', industryType: 'TILE' as const },
+      { code: 'CMP-ATOMIZER-NOZZLE', category: 'COMPONENT' as const, titleFa: 'نازل و پمپ پیستونی اتمایزر دوغاب', industryType: 'TILE' as const },
+      { code: 'CMP-REFRACTORY-LINING', category: 'COMPONENT' as const, titleFa: 'آستر نسوز و لاینینگ مقاوم به سایش', industryType: 'GENERAL' as const },
+      { code: 'CMP-MAIN-FAN-BEARING', category: 'COMPONENT' as const, titleFa: 'یاتاقان و بلوک بلبرینگ فن اصلی اگزاست', industryType: 'GENERAL' as const },
+      { code: 'CMP-ROLLER-SCREEN-MESH', category: 'COMPONENT' as const, titleFa: 'توری سرند غلتکی و دیسک گندله‌ساز', industryType: 'PELLETIZING' as const },
+      { code: 'CMP-HEAT-CONVEYOR', category: 'COMPONENT' as const, titleFa: 'نوار نقاله و زنجیر نسوز پخت', industryType: 'PELLETIZING' as const },
+      { code: 'CMP-BURNER-GAS-VALVE', category: 'COMPONENT' as const, titleFa: 'مشعل و شیر برقی گاز زون پخت', industryType: 'GENERAL' as const },
+
+      // علل ریشه‌ای (ROOT_CAUSE)
+      { code: 'RC-LUBRICATION-FAILURE', category: 'ROOT_CAUSE' as const, titleFa: 'خشک کار کردن و نقص در سیستم روانکاری', industryType: 'GENERAL' as const },
+      { code: 'RC-SUBSTANDARD-PART', category: 'ROOT_CAUSE' as const, titleFa: 'استفاده از قطعه یدکی بی‌کیفیت یا تقلبی', industryType: 'GENERAL' as const },
+      { code: 'RC-OPERATOR-ERROR', category: 'ROOT_CAUSE' as const, titleFa: 'خطای اپراتور و عدم رعایت دستورالعمل فرآیند', industryType: 'GENERAL' as const },
+      { code: 'RC-THERMAL-SHOCK', category: 'ROOT_CAUSE' as const, titleFa: 'شوک حرارتی ناشی از نوسان دمایی ناگهانی', industryType: 'TILE' as const },
+      { code: 'RC-DUST-SLURRY-INGRESS', category: 'ROOT_CAUSE' as const, titleFa: 'نفوذ گرد و غبار سیلیسی یا دوغاب به بیرینگ', industryType: 'GENERAL' as const },
+      { code: 'RC-NORMAL-WEAR', category: 'ROOT_CAUSE' as const, titleFa: 'فرسایش پایان عمر مفید قطعه (خستگی ماده)', industryType: 'GENERAL' as const },
+    ];
+
+    const failureCodeMap = new Map<string, string>();
+    for (const fc of failureCodeSeeds) {
+      const [inserted] = await db
+        .insert(failureCodes)
+        .values(fc)
+        .onConflictDoUpdate({
+          target: failureCodes.code,
+          set: { titleFa: fc.titleFa, category: fc.category, industryType: fc.industryType },
+        })
+        .returning();
+      if (inserted) {
+        failureCodeMap.set(inserted.code, inserted.id);
+      }
+    }
+
     // ۶. ایجاد قالب‌های چک‌لیست نت (PM Templates) و برنامه‌های زمان‌بندی (PM Schedules)
     const existingTemplates = await db
       .select()
@@ -727,9 +807,19 @@ async function seed() {
           completedAt: new Date(nowTs - 2 * 86_400_000),
           lotoVerified: true,
           lotoLockId: 'LOCK-KILN-09',
+          symptomCodeId: failureCodeMap.get('SYM-OVERHEAT') ?? null,
+          componentCodeId: failureCodeMap.get('CMP-CERAMIC-ROLLER') ?? null,
+          rootCauseCodeId: failureCodeMap.get('RC-THERMAL-SHOCK') ?? null,
           clientId: 'seed-wo-kiln-cm-01',
         })
-        .onConflictDoNothing({ target: workOrders.clientId })
+        .onConflictDoUpdate({
+          target: workOrders.clientId,
+          set: {
+            symptomCodeId: failureCodeMap.get('SYM-OVERHEAT') ?? null,
+            componentCodeId: failureCodeMap.get('CMP-CERAMIC-ROLLER') ?? null,
+            rootCauseCodeId: failureCodeMap.get('RC-THERMAL-SHOCK') ?? null,
+          },
+        })
         .returning();
 
       const [ballMillWo] = await db
@@ -750,9 +840,19 @@ async function seed() {
           completedAt: new Date(nowTs - 4 * 86_400_000),
           lotoVerified: true,
           lotoLockId: 'LOCK-BML-02',
+          symptomCodeId: failureCodeMap.get('SYM-EROSION') ?? null,
+          componentCodeId: failureCodeMap.get('CMP-REFRACTORY-LINING') ?? null,
+          rootCauseCodeId: failureCodeMap.get('RC-NORMAL-WEAR') ?? null,
           clientId: 'seed-wo-ballmill-pm-01',
         })
-        .onConflictDoNothing({ target: workOrders.clientId })
+        .onConflictDoUpdate({
+          target: workOrders.clientId,
+          set: {
+            symptomCodeId: failureCodeMap.get('SYM-EROSION') ?? null,
+            componentCodeId: failureCodeMap.get('CMP-REFRACTORY-LINING') ?? null,
+            rootCauseCodeId: failureCodeMap.get('RC-NORMAL-WEAR') ?? null,
+          },
+        })
         .returning();
 
       if (kilnWo && ceramicRollerPart) {
@@ -816,6 +916,105 @@ async function seed() {
             isPlanned: false,
           });
         }
+
+        // دستورکارهای نمونه برای ارزیابی نرخ تعمیر بار اول (FTFR) و تکرار خرابی (Rework)
+        await db
+          .insert(workOrders)
+          .values({
+            plantId: mainPlant.id,
+            assetId: pressAssetForDt.id,
+            type: 'CM',
+            status: 'DONE',
+            priority: 'HIGH',
+            title: 'تعمیر و رگلاژ استمپ پرس هیدرولیک ۲۵۰ تن',
+            description: 'تعمیر اولیه استمپ پرس به علت لقی و افت فشار',
+            assigneeId: techForDt?.id ?? null,
+            laborHourlyRateRials: 2_000_000,
+            dueAt: new Date(nowTs - 5 * 86_400_000),
+            startedAt: new Date(nowTs - 5 * 86_400_000 - 60 * 60_000),
+            completedAt: new Date(nowTs - 5 * 86_400_000),
+            lotoVerified: true,
+            lotoLockId: 'LOCK-PRS-01',
+            symptomCodeId: failureCodeMap.get('SYM-PRESSURE-DROP') ?? null,
+            componentCodeId: failureCodeMap.get('CMP-DIE-STAMP') ?? null,
+            rootCauseCodeId: failureCodeMap.get('RC-LUBRICATION-FAILURE') ?? null,
+            isRework: true,
+            clientId: 'seed-wo-press-cm-rework-1',
+          })
+          .onConflictDoUpdate({
+            target: workOrders.clientId,
+            set: {
+              isRework: true,
+              symptomCodeId: failureCodeMap.get('SYM-PRESSURE-DROP') ?? null,
+              componentCodeId: failureCodeMap.get('CMP-DIE-STAMP') ?? null,
+              rootCauseCodeId: failureCodeMap.get('RC-LUBRICATION-FAILURE') ?? null,
+            },
+          });
+
+        await db
+          .insert(workOrders)
+          .values({
+            plantId: mainPlant.id,
+            assetId: pressAssetForDt.id,
+            type: 'CM',
+            status: 'DONE',
+            priority: 'URGENT',
+            title: 'تکرار افت فشار و گیرپاژ مجدد استمپ پرس هیدرولیک (تکرار خرابی)',
+            description: 'گیرپاژ مجدد استمپ قالب پرس کمتر از ۴۸ ساعت پس از تعمیر قبلی',
+            assigneeId: techForDt?.id ?? null,
+            laborHourlyRateRials: 2_000_000,
+            dueAt: new Date(nowTs - 3 * 86_400_000),
+            startedAt: new Date(nowTs - 3 * 86_400_000 - 90 * 60_000),
+            completedAt: new Date(nowTs - 3 * 86_400_000),
+            lotoVerified: true,
+            lotoLockId: 'LOCK-PRS-02',
+            symptomCodeId: failureCodeMap.get('SYM-PRESSURE-DROP') ?? null,
+            componentCodeId: failureCodeMap.get('CMP-DIE-STAMP') ?? null,
+            rootCauseCodeId: failureCodeMap.get('RC-SUBSTANDARD-PART') ?? null,
+            isRework: false,
+            clientId: 'seed-wo-press-cm-rework-2',
+          })
+          .onConflictDoUpdate({
+            target: workOrders.clientId,
+            set: {
+              symptomCodeId: failureCodeMap.get('SYM-PRESSURE-DROP') ?? null,
+              componentCodeId: failureCodeMap.get('CMP-DIE-STAMP') ?? null,
+              rootCauseCodeId: failureCodeMap.get('RC-SUBSTANDARD-PART') ?? null,
+            },
+          });
+      }
+
+      // دستورکار نمونه ثبت صوری بازرسی (Pencil-Whipping)
+      const [compAssetForDt] = await db.select().from(assets).where(eq(assets.code, 'CMP-ATL-01'));
+      if (compAssetForDt) {
+        await db
+          .insert(workOrders)
+          .values({
+            plantId: mainPlant.id,
+            assetId: compAssetForDt.id,
+            type: 'PM',
+            status: 'DONE',
+            priority: 'MEDIUM',
+            title: 'سرویس ماهانه و بازرسی دوره‌ای کمپرسور اسکرو (ثبت سریع مشکوک)',
+            description: 'تکمیل سریع چک‌لیست ۶۰ دقیقه‌ای در کمتر از ۲ دقیقه توسط تکنسین',
+            assigneeId: techForDt?.id ?? null,
+            laborHourlyRateRials: 2_000_000,
+            dueAt: new Date(nowTs - 1 * 86_400_000),
+            startedAt: new Date(nowTs - 1 * 86_400_000 - 2 * 60_000),
+            completedAt: new Date(nowTs - 1 * 86_400_000),
+            lotoVerified: true,
+            lotoLockId: 'LOCK-CMP-05',
+            isSuspiciousInspection: true,
+            suspicionReasonFa: 'چک‌لیست ۶۰ دقیقه‌ای در ۲ دقیقه بسته شده است (کمتر از ۳۰٪ زمان تخمینی)',
+            clientId: 'seed-wo-suspicious-comp-1',
+          })
+          .onConflictDoUpdate({
+            target: workOrders.clientId,
+            set: {
+              isSuspiciousInspection: true,
+              suspicionReasonFa: 'چک‌لیست ۶۰ دقیقه‌ای در ۲ دقیقه بسته شده است (کمتر از ۳۰٪ زمان تخمینی)',
+            },
+          });
       }
     }
 

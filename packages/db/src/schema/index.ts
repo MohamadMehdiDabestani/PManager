@@ -101,6 +101,18 @@ export const notificationStatusEnum = pgEnum('notification_status', [
   'CANCELLED',
 ]);
 
+export const failureCodeCategoryEnum = pgEnum('failure_code_category', [
+  'SYMPTOM',
+  'COMPONENT',
+  'ROOT_CAUSE',
+]);
+
+export const failureIndustryTypeEnum = pgEnum('failure_industry_type', [
+  'TILE',
+  'PELLETIZING',
+  'GENERAL',
+]);
+
 export const actorTypeEnum = pgEnum('actor_type', ['USER', 'SYSTEM']);
 
 // ============================================================================
@@ -349,6 +361,20 @@ export type ChecklistResultEntry = {
   completedAt?: string;
 };
 
+/** کاتالوگ استاندارد علل خرابی ۳ لایه‌ای (مشابه ISO 14224): نشانه ← قطعه معیوب ← علت ریشه‌ای */
+export const failureCodes = pgTable(
+  'failure_codes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    code: varchar('code', { length: 32 }).notNull().unique(),
+    category: failureCodeCategoryEnum('category').notNull(),
+    titleFa: varchar('title_fa', { length: 200 }).notNull(),
+    industryType: failureIndustryTypeEnum('industry_type').notNull().default('GENERAL'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index('failure_codes_category_industry_idx').on(t.category, t.industryType)],
+);
+
 export const workOrders = pgTable(
   'work_orders',
   {
@@ -386,6 +412,16 @@ export const workOrders = pgTable(
       .notNull()
       .default([]),
     clientId: varchar('client_id', { length: 64 }).unique(),
+    symptomCodeId: uuid('symptom_code_id').references(() => failureCodes.id, { onDelete: 'set null' }),
+    componentCodeId: uuid('component_code_id').references(() => failureCodes.id, {
+      onDelete: 'set null',
+    }),
+    rootCauseCodeId: uuid('root_cause_code_id').references(() => failureCodes.id, {
+      onDelete: 'set null',
+    }),
+    isSuspiciousInspection: boolean('is_suspicious_inspection').notNull().default(false),
+    suspicionReasonFa: text('suspicion_reason_fa'),
+    isRework: boolean('is_rework').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -524,6 +560,9 @@ export type Role = (typeof roleEnum.enumValues)[number];
 export type AssetStatus = (typeof assetStatusEnum.enumValues)[number];
 export type AssetCriticality = (typeof assetCriticalityEnum.enumValues)[number];
 export type AssetTopologyType = (typeof assetTopologyTypeEnum.enumValues)[number];
+export type FailureCodeCategory = (typeof failureCodeCategoryEnum.enumValues)[number];
+export type FailureIndustryType = (typeof failureIndustryTypeEnum.enumValues)[number];
+export type FailureCode = InferSelectModel<typeof failureCodes>;
 export type WorkOrderStatus = (typeof workOrderStatusEnum.enumValues)[number];
 export type WorkOrderType = (typeof workOrderTypeEnum.enumValues)[number];
 export type Priority = (typeof priorityEnum.enumValues)[number];
