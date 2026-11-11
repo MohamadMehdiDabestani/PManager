@@ -132,3 +132,104 @@
 @cmms/web:dev: }
 
 
+@cmms/web:dev:  ⨯ Error: Cannot find module './4024.js'
+@cmms/web:dev: Require stack:
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\webpack-runtime.js
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\app\manifest.webmanifest\route.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\require.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\load-components.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\utils.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\options.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\index.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\next-config-ts\transpile-config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\next.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\lib\start-server.js
+@cmms/web:dev:     at __webpack_require__.f.require (D:\PManager\apps\web\.next\server\webpack-runtime.js:208:28)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\webpack-runtime.js:116:40)
+@cmms/web:dev:     at Array.reduce (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.e (D:\PManager\apps\web\.next\server\webpack-runtime.js:115:67)
+@cmms/web:dev:     at Array.map (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.X (D:\PManager\apps\web\.next\server\webpack-runtime.js:167:22)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:4988)
+@cmms/web:dev:     at Object.<anonymous> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:5036) {
+@cmms/web:dev:   code: 'MODULE_NOT_FOUND',
+@cmms/web:dev:   requireStack: [Array]
+@cmms/web:dev: }
+@cmms/web:dev:  ⨯ Error: Cannot find module './4024.js'
+@cmms/web:dev: Require stack:
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\webpack-runtime.js
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\app\manifest.webmanifest\route.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\require.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\load-components.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\utils.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\options.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\index.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\next-config-ts\transpile-config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\next.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\lib\start-server.js
+@cmms/web:dev:     at __webpack_require__.f.require (D:\PManager\apps\web\.next\server\webpack-runtime.js:208:28)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\webpack-runtime.js:116:40)
+@cmms/web:dev:     at Array.reduce (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.e (D:\PManager\apps\web\.next\server\webpack-runtime.js:115:67)
+@cmms/web:dev:     at Array.map (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.X (D:\PManager\apps\web\.next\server\webpack-runtime.js:167:22)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:4988)
+@cmms/web:dev:     at Object.<anonymous> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:5036) {
+@cmms/web:dev:   code: 'MODULE_NOT_FOUND',
+@cmms/web:dev:   requireStack: [Array]
+@cmms/web:dev: }
+@cmms/web:dev:  ⨯ Error: Cannot find module './4024.js'
+@cmms/web:dev: Require stack:
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\webpack-runtime.js
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\app\manifest.webmanifest\route.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\require.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\load-components.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\utils.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\options.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\index.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\next-config-ts\transpile-config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\next.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\lib\start-server.js
+@cmms/web:dev:     at __webpack_require__.f.require (D:\PManager\apps\web\.next\server\webpack-runtime.js:208:28)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\webpack-runtime.js:116:40)
+@cmms/web:dev:     at Array.reduce (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.e (D:\PManager\apps\web\.next\server\webpack-runtime.js:115:67)
+@cmms/web:dev:     at Array.map (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.X (D:\PManager\apps\web\.next\server\webpack-runtime.js:167:22)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:4988)
+@cmms/web:dev:     at Object.<anonymous> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:5036) {
+@cmms/web:dev:   code: 'MODULE_NOT_FOUND',
+@cmms/web:dev:   requireStack: [Array]
+@cmms/web:dev: }
+@cmms/web:dev:  ⨯ Error: Cannot find module './4024.js'
+@cmms/web:dev: Require stack:
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\webpack-runtime.js
+@cmms/web:dev: - D:\PManager\apps\web\.next\server\app\manifest.webmanifest\route.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\require.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\load-components.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\utils.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\options.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\swc\index.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\build\next-config-ts\transpile-config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\config.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\next.js
+@cmms/web:dev: - D:\PManager\node_modules\.pnpm\next@15.1.3_react-dom@19.0.0_react@19.0.0__react@19.0.0\node_modules\next\dist\server\lib\start-server.js
+@cmms/web:dev:     at __webpack_require__.f.require (D:\PManager\apps\web\.next\server\webpack-runtime.js:208:28)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\webpack-runtime.js:116:40)
+@cmms/web:dev:     at Array.reduce (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.e (D:\PManager\apps\web\.next\server\webpack-runtime.js:115:67)
+@cmms/web:dev:     at Array.map (<anonymous>)
+@cmms/web:dev:     at __webpack_require__.X (D:\PManager\apps\web\.next\server\webpack-runtime.js:167:22)
+@cmms/web:dev:     at <unknown> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:4988)
+@cmms/web:dev:     at Object.<anonymous> (D:\PManager\apps\web\.next\server\app\_not-found\page.js:1:5036) {
+@cmms/web:dev:   code: 'MODULE_NOT_FOUND',
+@cmms/web:dev:   requireStack: [Array]
+@cmms/web:dev: }
+@cmms/web:dev:  GET /_next/static/chunks/fallback/webpack.js 500 in 312ms
+@cmms/web:dev:  GET /_next/static/chunks/fallback/main.js 500 in 307ms
+@cmms/web:dev:  GET /_next/static/chunks/fallback/react-refresh.js 500 in 306ms
+@cmms/web:dev:  GET /_next/static/chunks/fallback/pages/_app.js 500 in 305ms
+@cmms/web:dev:  GET /_next/static/chunks/fallback/pages/_error.js 500 in 315ms
