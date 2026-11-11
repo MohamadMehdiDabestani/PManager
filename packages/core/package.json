@@ -8,6 +8,7 @@
     "./auth": "./src/auth/index.ts",
     "./i18n": "./src/i18n/persian.ts",
     "./financial-downtime": "./src/financial-downtime.ts",
+    "./quality-and-pareto": "./src/quality-and-pareto.ts",
     "./domain/pm-schedule": "./src/domain/pm-schedule.ts",
     "./domain/notifications": "./src/domain/notifications.ts"
   },

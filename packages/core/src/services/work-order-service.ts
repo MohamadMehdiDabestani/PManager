@@ -9,6 +9,7 @@ import {
   parts,
   workOrderPartUsages,
   downtimeLogs,
+  failureCodes,
   type WorkOrder,
   type WorkOrderStatus,
   type ChecklistResultEntry,
@@ -25,6 +26,11 @@ import {
   type AssetTopologyKind,
   type DowntimeCostBreakdown,
 } from '../financial-downtime';
+import {
+  assertValidFailureCodes,
+  evaluatePencilWhippingForCompletion,
+  flagReworkForCompletedWorkOrder,
+} from './quality-service';
 
 export type WorkOrderWithDetails = WorkOrder & {
   assetName: string;
@@ -52,6 +58,9 @@ export type WorkOrderWithDetails = WorkOrder & {
   }>;
   downtimes: DowntimeLog[];
   financialImpact: DowntimeCostBreakdown;
+  symptomCodeTitle?: string | null;
+  componentCodeTitle?: string | null;
+  rootCauseCodeTitle?: string | null;
 };
 
 export const verifyLotoSchema = z.object({
@@ -94,6 +103,9 @@ export const completeWorkOrderSchema = z.object({
   completionNote: z.string().optional(),
   completionMeterReading: z.number().nonnegative().optional(),
   clientId: z.string().max(64).optional(),
+  symptomCodeId: z.string().uuid().optional().nullable(),
+  componentCodeId: z.string().uuid().optional().nullable(),
+  rootCauseCodeId: z.string().uuid().optional().nullable(),
 });
 
 export async function listWorkOrders(
@@ -281,6 +293,27 @@ export async function getWorkOrderById(
     laborHourlyRateRials: row.order.laborHourlyRateRials ?? 2_000_000,
   });
 
+  const codeIds = [
+    row.order.symptomCodeId,
+    row.order.componentCodeId,
+    row.order.rootCauseCodeId,
+  ].filter((id): id is string => Boolean(id));
+
+  let symptomCodeTitle: string | null = null;
+  let componentCodeTitle: string | null = null;
+  let rootCauseCodeTitle: string | null = null;
+
+  if (codeIds.length > 0) {
+    const codeRows = await ctx.db
+      .select({ id: failureCodes.id, titleFa: failureCodes.titleFa })
+      .from(failureCodes)
+      .where(inArray(failureCodes.id, codeIds));
+    const titleMap = new Map(codeRows.map((c) => [c.id, c.titleFa]));
+    if (row.order.symptomCodeId) symptomCodeTitle = titleMap.get(row.order.symptomCodeId) ?? null;
+    if (row.order.componentCodeId) componentCodeTitle = titleMap.get(row.order.componentCodeId) ?? null;
+    if (row.order.rootCauseCodeId) rootCauseCodeTitle = titleMap.get(row.order.rootCauseCodeId) ?? null;
+  }
+
   return {
     ...row.order,
     assetName: row.assetName,
@@ -299,6 +332,9 @@ export async function getWorkOrderById(
     partUsages: usageRows,
     downtimes,
     financialImpact,
+    symptomCodeTitle,
+    componentCodeTitle,
+    rootCauseCodeTitle,
   };
 }
 
@@ -631,8 +667,28 @@ export async function completeWorkOrder(
     }
   }
 
+  // Failure codes validation (mandatory for corrective CM work orders)
+  const isCm = existing.type === 'CM';
+  const symptomCodeId = input.symptomCodeId ?? existing.symptomCodeId ?? null;
+  const componentCodeId = input.componentCodeId ?? existing.componentCodeId ?? null;
+  const rootCauseCodeId = input.rootCauseCodeId ?? existing.rootCauseCodeId ?? null;
+
+  await assertValidFailureCodes(
+    ctx.db,
+    { symptomCodeId, componentCodeId, rootCauseCodeId },
+    isCm,
+  );
+
   const finalChecklist = Array.from(mergedMap.values());
   const now = ctx.now();
+
+  // Pencil-whipping evaluation (< 30% estimated time or zero-variance duplicate numbers)
+  const pencilCheck = await evaluatePencilWhippingForCompletion(
+    ctx,
+    existing,
+    finalChecklist,
+    now,
+  );
 
   const [completed] = await ctx.db
     .update(workOrders)
@@ -642,6 +698,11 @@ export async function completeWorkOrder(
       completedAt: now,
       checklistResult: finalChecklist,
       description: input.completionNote?.trim() || existing.description,
+      symptomCodeId,
+      componentCodeId,
+      rootCauseCodeId,
+      isSuspiciousInspection: pencilCheck.isSuspicious,
+      suspicionReasonFa: pencilCheck.reasonFa,
       updatedAt: now,
     })
     .where(eq(workOrders.id, existing.id))
@@ -649,6 +710,11 @@ export async function completeWorkOrder(
 
   if (!completed) {
     throw new Error('خطا در ثبت تکمیل دستورکار');
+  }
+
+  // Rework evaluation: if this emergency repair happened < 72h on same asset & component, mark previous as rework
+  if (completed.type === 'CM' && completed.componentCodeId) {
+    await flagReworkForCompletedWorkOrder(ctx, completed);
   }
 
   // If linked to a PM schedule, update lastDoneAt / lastDoneMeter and recompute nextDueAt
@@ -691,6 +757,10 @@ export async function completeWorkOrder(
       completedAt: now,
       lotoVerified: existing.lotoVerified,
       lotoLockId: existing.lotoLockId,
+      symptomCodeId: completed.symptomCodeId,
+      componentCodeId: completed.componentCodeId,
+      rootCauseCodeId: completed.rootCauseCodeId,
+      isSuspiciousInspection: completed.isSuspiciousInspection,
     },
   });
 
